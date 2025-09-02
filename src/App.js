@@ -90,6 +90,7 @@ const BOMView = () => {
             setBomItems(data.items);
         } catch (err) {
             setError(err.message);
+            setBomItems([]); // Limpiar en caso de error
         } finally {
             setLoading(false);
         }
@@ -103,7 +104,7 @@ const BOMView = () => {
             const response = await fetch(`${API_URL}/boms/${selectedProduct}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ material_id: newMaterial, quantity: parseInt(newQuantity, 10) })
+                body: JSON.stringify({ material_id: parseInt(newMaterial, 10), quantity: parseInt(newQuantity, 10) })
             });
             if (!response.ok) throw new Error((await response.json()).detail);
             fetchBom();
@@ -113,12 +114,13 @@ const BOMView = () => {
     };
 
     const handleRemoveMaterial = async (materialId) => {
-        if (!window.confirm('¿Estás seguro?')) return;
-        try {
-            await fetch(`${API_URL}/boms/${selectedProduct}/${materialId}`, { method: 'DELETE' });
-            fetchBom();
-        } catch (err) {
-            alert('Error al eliminar el material.');
+        if (window.confirm('¿Estás seguro?')) {
+            try {
+                await fetch(`${API_URL}/boms/${selectedProduct}/${materialId}`, { method: 'DELETE' });
+                fetchBom();
+            } catch (err) {
+                alert('Error al eliminar el material.');
+            }
         }
     };
 
@@ -160,7 +162,7 @@ const BOMView = () => {
                                 {rawMaterials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                             </select>
                         </div>
-                         <div>
+                        <div>
                             <label className="block text-sm font-medium">Cantidad</label>
                             <input type="number" value={newQuantity} onChange={e => setNewQuantity(e.target.value)} min="1" className="mt-1 block w-full p-2 border rounded-md" />
                         </div>
@@ -205,7 +207,7 @@ const MRPView = () => {
             const response = await fetch(`${API_URL}/mrp/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: selectedProduct, production_plan: mockProductionPlan }),
+                body: JSON.stringify({ product_id: parseInt(selectedProduct, 10), production_plan: mockProductionPlan }),
             });
             if (!response.ok) throw new Error((await response.json()).detail);
             const result = await response.json();
@@ -228,7 +230,7 @@ const MRPView = () => {
                             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
-                     <button onClick={handleGenerateMRP} disabled={mrpStatus === 'loading' || !selectedProduct} className="flex items-center justify-center bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 h-10 disabled:bg-blue-300">
+                    <button onClick={handleGenerateMRP} disabled={mrpStatus === 'loading' || !selectedProduct} className="flex items-center justify-center bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 h-10 disabled:bg-blue-300">
                         <Wrench size={20} className="mr-2" />
                         {mrpStatus === 'loading' ? 'Calculando...' : 'Calcular MRP'}
                     </button>
@@ -239,7 +241,7 @@ const MRPView = () => {
                 {mrpStatus === 'idle' && <div className="h-[200px] flex flex-col items-center justify-center text-center text-gray-500 bg-gray-50 rounded-lg"><Package size={48} className="mb-4" /><h4>El plan de materiales aparecerá aquí</h4></div>}
                 {mrpStatus === 'error' && <div className="h-[200px] flex flex-col items-center justify-center text-center text-red-600 bg-red-50 rounded-lg"><AlertTriangle size={48} className="mb-4" /><h4>Error</h4><p>{error}</p></div>}
                 {mrpStatus === 'completed' && (
-                     <div className="overflow-x-auto">
+                    <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead><tr className="border-b bg-gray-50"><th className="p-4">ID</th><th className="p-4">Nombre</th><th className="p-4">Necesidad Bruta</th><th className="p-4">En Inventario</th><th className="p-4 bg-green-50 text-green-800">A Ordenar</th></tr></thead>
                             <tbody>
