@@ -194,6 +194,131 @@ const ItemsView = () => {
 };
 
 // --- APP PRINCIPAL Y OTROS COMPONENTES ---
+const DashboardView = () => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Usamos useCallback para que la función no se recree en cada render
+  const fetchItems = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/items/`);
+      if (!response.ok) {
+        throw new Error('No se pudieron cargar los datos del inventario.');
+      }
+      const data = await response.json();
+      setItems(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // useEffect para llamar a fetchItems cuando el componente se monta
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+// ... dentro de DashboardView, después de useEffect
+  const dashboardMetrics = React.useMemo(() => {
+    if (!items || items.length === 0) {
+      return { totalSkus: 0, totalUnits: 0, lowStockItems: 0, obsoleteItems: 0 };
+    }
+    
+    // Calcula el total de unidades sumando el in_stock de cada ítem
+    const totalUnits = items.reduce((sum, item) => sum + item.in_stock, 0);
+
+    // Filtra los ítems que están por debajo de su punto de reorden
+    const lowStockItems = items.filter(item => 
+        item.reorder_point !== null && item.in_stock <= item.reorder_point
+    ).length;
+
+    // Filtra los ítems con estado 'Obsoleto'
+    const obsoleteItems = items.filter(item => item.status === 'Obsoleto').length;
+
+    return {
+      totalSkus: items.length,
+      totalUnits,
+      lowStockItems,
+      obsoleteItems,
+    };
+  }, [items]);
+  
+  // Por ahora, solo mostraremos un mensaje de carga o error
+  if (loading) return <div className="p-8 text-center">Cargando datos del dashboard...</div>;
+  if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+
+  return (
+    <div className="p-8 space-y-8">
+      {/* Sección de Tarjetas de KPI */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+            <div className="bg-blue-100 p-3 rounded-full"><Package size={28} className="text-blue-600" /></div>
+            <div>
+                <p className="text-gray-500 text-sm font-medium">Total de SKUs</p>
+                <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.totalSkus}</p>
+            </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+            <div className="bg-green-100 p-3 rounded-full"><ShoppingCart size={28} className="text-green-600" /></div>
+            <div>
+                <p className="text-gray-500 text-sm font-medium">Unidades en Stock</p>
+                <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.totalUnits}</p>
+            </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+            <div className="bg-yellow-100 p-3 rounded-full"><AlertTriangle size={28} className="text-yellow-600" /></div>
+            <div>
+                <p className="text-gray-500 text-sm font-medium">Ítems con Stock Bajo</p>
+                <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.lowStockItems}</p>
+            </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+            <div className="bg-gray-100 p-3 rounded-full"><Trash2 size={28} className="text-gray-600" /></div>
+            <div>
+                <p className="text-gray-500 text-sm font-medium">Ítems Obsoletos</p>
+                <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.obsoleteItems}</p>
+            </div>
+        </div>
+      </div>
+
+      {/* Aquí añadiremos más componentes, como la tabla de alertas */}
+      <div className="bg-white p-6 rounded-xl shadow-md">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Alertas de Inventario: Stock Bajo</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th className="p-3">SKU</th>
+                <th className="p-3">Nombre</th>
+                <th className="p-3">Stock Actual</th>
+                <th className="p-3">Stock Crítico</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items
+                .filter(item => item.reorder_point !== null && item.in_stock <= item.reorder_point)
+                .map(item => (
+                  <tr key={item.sku} className="border-b hover:bg-yellow-50">
+                    <td className="p-3 font-medium text-yellow-800">{item.sku}</td>
+                    <td className="p-3">{item.name}</td>
+                    <td className="p-3 font-bold text-red-600">{item.in_stock} {item.unit_of_measure}</td>
+                    <td className="p-3">{item.reorder_point}</td>
+                  </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PlaceholderView = ({ title }) => <div className="p-8"><div className="bg-white p-10 rounded-2xl shadow-md text-center"><h2 className="text-2xl font-bold text-gray-800">{title}</h2></div></div>;
 const BOMView = () => <PlaceholderView title="Gestión de BOM" />;
 function App() {
@@ -201,7 +326,10 @@ function App() {
   const getTitle = (view) => ({'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', /*...*/}[view] || 'Dashboard');
   const renderContent = () => {
     switch (activeView) {
-      case 'items': return <ItemsView />; case 'bom': return <BOMView />; default: return <PlaceholderView title={getTitle(activeView)} />;
+      case 'dashboard': return <DashboardView />;
+      case 'items': return <ItemsView />; 
+      case 'bom': return <BOMView />; 
+      default: return <PlaceholderView title={getTitle(activeView)} />;
     }
   };
   return (
