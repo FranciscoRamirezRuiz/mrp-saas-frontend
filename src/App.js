@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus } from 'lucide-react';
 
 const API_URL = 'http://127.0.0.1:8000';
 
