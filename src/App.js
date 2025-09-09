@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart } from 'lucide-react';
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+
 
 const API_URL = 'http://127.0.0.1:8000';
 
-// --- COMPONENTES --- 
+// --- COMPONENTS --- 
 const Sidebar = ({ activeView, setActiveView }) => {
   const navItems = [
     { name: 'Dashboard', icon: Home, view: 'dashboard' }, { name: 'Gestión de Ítems', icon: Package, view: 'items' }, { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
@@ -207,8 +209,7 @@ const ItemsView = () => {
 };
 
 
-// --- VISTA BOM ---
-
+// --- BOM VIEW ---
 const BOMView = () => {
     const [view, setView] = useState('list'); // 'list', 'editor', 'tree'
     const [selectedBomSku, setSelectedBomSku] = useState(null);
@@ -240,7 +241,7 @@ const BOMView = () => {
             const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itemData) });
             if (!response.ok) throw new Error((await response.json()).detail || 'Error al guardar.');
             setIsItemModalOpen(false);
-            await fetchAllItems(); // Recargar todos los items
+            await fetchAllItems();
         } catch (err) { alert(`Error: ${err.message}`); }
     };
 
@@ -493,13 +494,170 @@ const BomTreeViewModal = ({ sku, onClose }) => {
     );
 }
 
-// --- APP PRINCIPAL Y OTROS COMPONENTES ---
+// --- PREDICTION VIEW ---
+const PredictionView = () => {
+    const [file, setFile] = useState(null);
+    const [message, setMessage] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [products, setProducts] = useState([]);
+    const [selectedSku, setSelectedSku] = useState('');
+    const [historicalData, setHistoricalData] = useState([]);
+    const [forecastData, setForecastData] = useState([]);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await fetch(`${API_URL}/items/`);
+                const allItems = await response.json();
+                const finishedProducts = allItems.filter(item => item.item_type === 'Producto Terminado');
+                setProducts(finishedProducts);
+                if (finishedProducts.length > 0) {
+                    setSelectedSku(finishedProducts[0].sku);
+                }
+            } catch (error) {
+                console.error("Error fetching products:", error);
+            }
+        };
+        fetchProducts();
+    }, []);
+
+    const handleFileChange = (e) => {
+        setFile(e.target.files[0]);
+    };
+
+    const handleFileUpload = async () => {
+        if (!file) {
+            setMessage('Por favor, selecciona un archivo CSV.');
+            return;
+        }
+        setLoading(true);
+        setMessage('');
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_URL}/sales/upload`, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Error al subir el archivo.');
+            }
+            setMessage(data.message);
+        } catch (error) {
+            setMessage(`Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGenerateForecast = async () => {
+        if (!selectedSku) {
+            setMessage('Por favor, selecciona un producto.');
+            return;
+        }
+        setLoading(true);
+        setMessage('');
+        setHistoricalData([]);
+        setForecastData([]);
+
+        try {
+            // 1. Fetch historical data for chart
+            const salesResponse = await fetch(`${API_URL}/sales/${selectedSku}`);
+            if (salesResponse.ok) {
+                const sales = await salesResponse.json();
+                setHistoricalData(sales.map(s => ({...s, ds: new Date(s.ds).toLocaleDateString() })));
+            }
+
+            // 2. Generate and fetch forecast data
+            const forecastResponse = await fetch(`${API_URL}/forecast/${selectedSku}`, {
+                method: 'POST',
+            });
+            const data = await forecastResponse.json();
+            if (!forecastResponse.ok) {
+                throw new Error(data.detail || 'Error al generar el pronóstico.');
+            }
+            setForecastData(data.map(d => ({...d, ds: new Date(d.ds).toLocaleDateString() })));
+            setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
+        } catch (error) {
+            setMessage(`Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return (
+        <div className="p-8 space-y-8">
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">1. Cargar Historial de Ventas</h2>
+                <p className="text-sm text-gray-600 mb-4">Sube un archivo CSV con las columnas: `fecha_venta` (YYYY-MM-DD), `id_producto`, `cantidad_vendida`.</p>
+                <div className="flex items-center gap-4">
+                    <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                    <button onClick={handleFileUpload} disabled={loading} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
+                        <Upload size={16}/> {loading ? 'Cargando...' : 'Cargar Archivo'}
+                    </button>
+                </div>
+                {message && <p className="mt-4 text-sm text-gray-700">{message}</p>}
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">2. Generar Pronóstico de Demanda</h2>
+                <div className="flex items-center gap-4">
+                     <select value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="p-2 border rounded-md w-full md:w-1/3">
+                        <option value="">Selecciona un producto...</option>
+                        {products.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
+                    </select>
+                    <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md disabled:bg-gray-400">
+                        <LineChart size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
+                    </button>
+                </div>
+            </div>
+            
+            {historicalData.length > 0 && (
+                 <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Ventas Históricas de {selectedSku}</h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <RechartsLineChart data={historicalData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                            <XAxis dataKey="ds" />
+                            <YAxis />
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="y" name="Ventas" stroke="#8884d8" />
+                        </RechartsLineChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+            
+            {forecastData.length > 0 && (
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Pronóstico para {selectedSku}</h3>
+                    <ResponsiveContainer width="100%" height={400}>
+                         <AreaChart data={forecastData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="ds" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Area type="monotone" dataKey="yhat" name="Pronóstico" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} />
+                            <Area type="monotone" dataKey="yhat_lower" name="Límite Inferior" stroke="#ccc" fill="#ccc" fillOpacity={0.2} />
+                            <Area type="monotone" dataKey="yhat_upper" name="Límite Superior" stroke="#ccc" fill="#ccc" fillOpacity={0.2} />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// --- MAIN APP & OTHER COMPONENTS ---
 const DashboardView = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Usamos useCallback para que la función no se recree en cada render
   const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
@@ -516,26 +674,19 @@ const DashboardView = () => {
     }
   }, []);
 
-  // useEffect para llamar a fetchItems cuando el componente se monta
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
-// ... dentro de DashboardView, después de useEffect
   const dashboardMetrics = React.useMemo(() => {
     if (!items || items.length === 0) {
       return { totalSkus: 0, totalUnits: 0, lowStockItems: 0, obsoleteItems: 0 };
     }
     
-    // Calcula el total de unidades sumando el in_stock de cada ítem
     const totalUnits = items.reduce((sum, item) => sum + item.in_stock, 0);
-
-    // Filtra los ítems que están por debajo de su punto de reorden
     const lowStockItems = items.filter(item => 
         item.reorder_point !== null && item.in_stock <= item.reorder_point
     ).length;
-
-    // Filtra los ítems con estado 'Obsoleto'
     const obsoleteItems = items.filter(item => item.status === 'Obsoleto').length;
 
     return {
@@ -546,13 +697,11 @@ const DashboardView = () => {
     };
   }, [items]);
   
-  // Por ahora, solo mostraremos un mensaje de carga o error
   if (loading) return <div className="p-8 text-center">Cargando datos del dashboard...</div>;
   if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
 
   return (
     <div className="p-8 space-y-8">
-      {/* Sección de Tarjetas de KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
             <div className="bg-blue-100 p-3 rounded-full"><Package size={28} className="text-blue-600" /></div>
@@ -561,7 +710,6 @@ const DashboardView = () => {
                 <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.totalSkus}</p>
             </div>
         </div>
-
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
             <div className="bg-green-100 p-3 rounded-full"><ShoppingCart size={28} className="text-green-600" /></div>
             <div>
@@ -569,7 +717,6 @@ const DashboardView = () => {
                 <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.totalUnits}</p>
             </div>
         </div>
-
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
             <div className="bg-yellow-100 p-3 rounded-full"><AlertTriangle size={28} className="text-yellow-600" /></div>
             <div>
@@ -577,7 +724,6 @@ const DashboardView = () => {
                 <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.lowStockItems}</p>
             </div>
         </div>
-        
         <div className="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
             <div className="bg-gray-100 p-3 rounded-full"><Trash2 size={28} className="text-gray-600" /></div>
             <div>
@@ -586,18 +732,13 @@ const DashboardView = () => {
             </div>
         </div>
       </div>
-
-      {/* Aquí añadiremos más componentes, como la tabla de alertas */}
       <div className="bg-white p-6 rounded-xl shadow-md">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Alertas de Inventario: Stock Bajo</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
-                <th className="p-3">SKU</th>
-                <th className="p-3">Nombre</th>
-                <th className="p-3">Stock Actual</th>
-                <th className="p-3">Stock Crítico</th>
+                <th className="p-3">SKU</th><th className="p-3">Nombre</th><th className="p-3">Stock Actual</th><th className="p-3">Stock Crítico</th>
               </tr>
             </thead>
             <tbody>
@@ -621,13 +762,14 @@ const DashboardView = () => {
 
 const PlaceholderView = ({ title }) => <div className="p-8"><div className="bg-white p-10 rounded-2xl shadow-md text-center"><h2 className="text-2xl font-bold text-gray-800">{title}</h2></div></div>;
 function App() {
-  const [activeView, setActiveView] = useState('bom');
+  const [activeView, setActiveView] = useState('prediction');
   const getTitle = (view) => ({'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 'mrp': 'Plan de Requerimiento de Materiales', 'settings': 'Configuración'}[view] || 'Dashboard');
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard': return <DashboardView />;
       case 'items': return <ItemsView />; 
       case 'bom': return <BOMView />; 
+      case 'prediction': return <PredictionView />;
       default: return <PlaceholderView title={getTitle(activeView)} />;
     }
   };
