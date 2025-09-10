@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts';
+import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
 const API_URL = 'http://127.0.0.1:8000';
@@ -495,76 +495,16 @@ const BomTreeViewModal = ({ sku, onClose }) => {
 }
 
 // --- PREDICTION VIEW ---
-const PaginatedTable = ({ data, rowsPerPage = 10 }) => {
-    const [currentPage, setCurrentPage] = useState(1);
-    const totalPages = Math.ceil(data.length / rowsPerPage);
-
-    const handlePageChange = (page) => {
-        if (page >= 1 && page <= totalPages) {
-            setCurrentPage(page);
-        }
-    };
-    
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const paginatedData = data.slice(startIndex, startIndex + rowsPerPage);
-
-    return (
-        <div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                            <th className="p-3">Fecha</th>
-                            <th className="p-3">Pronóstico (yhat)</th>
-                            <th className="p-3">Límite Inferior</th>
-                            <th className="p-3">Límite Superior</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginatedData.map((row, index) => (
-                            <tr key={index} className="border-b hover:bg-gray-50">
-                                <td className="p-3">{row.ds}</td>
-                                <td className="p-3 font-semibold">{row.yhat.toFixed(2)}</td>
-                                <td className="p-3">{row.yhat_lower ? row.yhat_lower.toFixed(2) : 'N/A'}</td>
-                                <td className="p-3">{row.yhat_upper ? row.yhat_upper.toFixed(2) : 'N/A'}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="flex justify-between items-center mt-4">
-                <span className="text-sm text-gray-700">
-                    Página {currentPage} de {totalPages}
-                </span>
-                <div className="inline-flex -space-x-px">
-                    <button onClick={() => handlePageChange(1)} disabled={currentPage === 1} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronsLeft size={16}/></button>
-                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronLeft size={16}/></button>
-                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronRight size={16}/></button>
-                    <button onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronsRight size={16}/></button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-const PredictionView = () => {
+const PredictionView = ({ results, setResults }) => {
     const [file, setFile] = useState(null);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState([]);
-    const [selectedSku, setSelectedSku] = useState('');
-    const [historicalData, setHistoricalData] = useState([]);
-    const [forecastData, setForecastData] = useState([]);
-    const [forecastMetrics, setForecastMetrics] = useState(null);
-    const [demandSummary, setDemandSummary] = useState([]);
-    const [forecastPeriods, setForecastPeriods] = useState(30);
+    // Local state for UI controls
+    const [selectedSku, setSelectedSku] = useState(results?.selectedSku || '');
+    const [forecastPeriods, setForecastPeriods] = useState(90);
     const [forecastModel, setForecastModel] = useState('prophet');
-
-    // State for pagination
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -573,7 +513,7 @@ const PredictionView = () => {
                 const allItems = await response.json();
                 const finishedProducts = allItems.filter(item => item.item_type === 'Producto Terminado');
                 setProducts(finishedProducts);
-                if (finishedProducts.length > 0) {
+                if (finishedProducts.length > 0 && !selectedSku) {
                     setSelectedSku(finishedProducts[0].sku);
                 }
             } catch (error) {
@@ -582,7 +522,7 @@ const PredictionView = () => {
             }
         };
         fetchProducts();
-    }, []);
+    }, [selectedSku]);
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -608,7 +548,11 @@ const PredictionView = () => {
             });
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.detail || 'Error al subir el archivo.');
+                const errorDetail = data.detail.replace(/\n/g, '<br/>');
+                const errorElement = document.createElement('div');
+                errorElement.innerHTML = errorDetail;
+                setError(errorElement.textContent || errorElement.innerText);
+                return;
             }
             setMessage(data.message);
         } catch (error) {
@@ -618,14 +562,11 @@ const PredictionView = () => {
         }
     };
     
-    // Function to safely format dates from YYYY-MM-DD strings
     const formatDate = (dateString) => {
-        const [year, month, day] = dateString.split('-');
-        return new Date(year, month - 1, day).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
+        try {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch { return dateString; }
     };
     
     const handleGenerateForecast = async () => {
@@ -636,24 +577,14 @@ const PredictionView = () => {
         setLoading(true);
         setMessage('');
         setError('');
-        setHistoricalData([]);
-        setForecastData([]);
-        setForecastMetrics(null);
-        setDemandSummary([]);
-        setCurrentPage(1);
 
         try {
-            // 1. Fetch historical data for the selected SKU
             const salesResponse = await fetch(`${API_URL}/sales/${selectedSku}`);
             let sales = [];
             if (salesResponse.ok) {
                 sales = await salesResponse.json();
-                setHistoricalData(sales.map(s => ({ ...s, ds: new Date(s.ds + 'T00:00:00') })));
-            } else {
-                console.warn("No se encontraron datos históricos para este SKU.");
             }
 
-            // 2. Generate and fetch forecast data
             const forecastUrl = `${API_URL}/forecast/${selectedSku}?periods=${forecastPeriods}&model_type=${forecastModel}`;
             const forecastResponse = await fetch(forecastUrl, { method: 'POST' });
             
@@ -664,7 +595,6 @@ const PredictionView = () => {
 
             const formattedForecast = data.forecast.map(d => ({ ...d, ds: new Date(d.ds) }));
             
-            // Combine historical data with forecast data for a unified chart
             const combinedData = [
                 ...sales.map(s => ({ ds: new Date(s.ds + 'T00:00:00'), historico: s.y })),
                 ...formattedForecast.map(f => ({
@@ -674,24 +604,22 @@ const PredictionView = () => {
                     max: f.yhat_upper
                 }))
             ].sort((a, b) => a.ds - b.ds);
-
-            setForecastData(combinedData);
-            setForecastMetrics(data.metrics);
-            setDemandSummary(data.summary);
+            
+            // Update shared state in App component
+            setResults({
+                forecastData: combinedData,
+                demandSummary: data.summary,
+                metrics: data.metrics,
+                selectedSku: selectedSku
+            });
             setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
         } catch (error) {
             setError(`Error: ${error.message}`);
+            setResults(null); // Clear previous results on error
         } finally {
             setLoading(false);
         }
     };
-
-    // Pagination logic
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentForecastItems = forecastData.slice(indexOfFirstItem, indexOfLastItem);
-
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
     
     return (
         <div className="p-8 space-y-8">
@@ -705,85 +633,77 @@ const PredictionView = () => {
                     </button>
                 </div>
                 {message && <p className="mt-4 text-sm text-green-700 bg-green-50 p-3 rounded-md">{message}</p>}
-                {error && <p className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-md">{error}</p>}
+                {error && <div className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-md whitespace-pre-wrap">{error}</div>}
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">2. Generar Pronóstico de Demanda</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                     <div className="w-full">
+                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Producto</label>
                         <select value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="p-2 border rounded-md w-full">
                             <option value="">Selecciona un producto...</option>
                             {products.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
                         </select>
                      </div>
-                     <div className="w-full">
+                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Pronóstico</label>
                         <select value={forecastModel} onChange={(e) => setForecastModel(e.target.value)} className="p-2 border rounded-md w-full">
                             <option value="prophet">Prophet (Recomendado)</option>
                             <option value="ses">Suavizado Exponencial Simple</option>
                         </select>
                      </div>
-                     <div className="w-full">
+                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Días a Pronosticar</label>
-                        <input type="number" value={forecastPeriods} onChange={(e) => setForecastPeriods(e.target.value)} className="p-2 border rounded-md w-full" placeholder="Ej. 30"/>
+                        <input type="number" value={forecastPeriods} onChange={(e) => setForecastPeriods(e.target.value)} className="p-2 border rounded-md w-full" placeholder="Ej. 90"/>
                      </div>
                 </div>
                 <div className="mt-4">
                     <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-green-600 rounded-md disabled:bg-gray-400">
-                        <LineChart size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
+                        <LineChartIcon size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
                     </button>
                 </div>
             </div>
             
-            {forecastData.length > 0 && (
+            {results && results.forecastData && results.forecastData.length > 0 && (
                 <div className="bg-white p-6 rounded-xl shadow-md">
                     <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Pronóstico para {selectedSku}</h3>
-                        {forecastMetrics && (
+                        <h3 className="text-lg font-bold text-gray-800">Pronóstico para {results.selectedSku}</h3>
+                        {results.metrics && (
                             <div className="text-xs text-right text-gray-600 bg-gray-50 p-2 rounded-md">
                                 <p><strong>Métricas del Modelo:</strong></p>
-                                <p>Error Absoluto Medio (MAE): <strong>{forecastMetrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
-                                <p>Raíz del Error Cuadrático Medio (RMSE): <strong>{forecastMetrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
+                                <p>Error Absoluto Medio (MAE): <strong>{results.metrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
+                                <p>Raíz del Error Cuadrático Medio (RMSE): <strong>{results.metrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
                             </div>
                         )}
                     </div>
                     <ResponsiveContainer width="100%" height={400}>
-                         <AreaChart data={forecastData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                         <ComposedChart data={results.forecastData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString()} />
+                            <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })} />
                             <YAxis />
-                            <Tooltip labelFormatter={(time) => new Date(time).toLocaleDateString()} />
+                            <Tooltip labelFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} />
                             <Legend />
                             <Area type="monotone" dataKey="historico" name="Ventas Históricas" stroke="#1d4ed8" fill="#3b82f6" fillOpacity={0.6} />
-                            <Area type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" fill="#22c55e" fillOpacity={0.4} />
-                            {forecastModel === 'prophet' && 
-                                <Area type="monotone" dataKey="max" name="Límite Superior" stroke="#9ca3af" fill="#e5e7eb" fillOpacity={0.2} strokeDasharray="5 5" />
-                            }
-                            {forecastModel === 'prophet' && 
-                                <Area type="monotone" dataKey="min" name="Límite Inferior" stroke="#9ca3af" fill="#e5e7eb" fillOpacity={0.2} strokeDasharray="5 5" />
-                            }
-                        </AreaChart>
+                            <Line type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" />
+                            <Area type="monotone" dataKey="max" name="Intervalo de Confianza" stroke="#9ca3af" fill="#e5e7eb" fillOpacity={0.2} strokeDasharray="5 5" data={results.forecastData.filter(d => d.max !== undefined)} />
+                        </ComposedChart>
                     </ResponsiveContainer>
                 </div>
             )}
 
-            {demandSummary.length > 0 && (
+            {results && results.demandSummary && results.demandSummary.length > 0 && (
                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen de Demanda Semanal para {selectedSku}</h3>
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen de Demanda Semanal para {results.selectedSku}</h3>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
-                                    <th className="p-3">Periodo</th>
-                                    <th className="p-3">Fecha de Inicio</th>
-                                    <th className="p-3">Fecha de Fin</th>
-                                    <th className="p-3 text-right">Demanda Pronosticada</th>
+                                    <th className="p-3">Periodo</th><th className="p-3">Fecha de Inicio</th><th className="p-3">Fecha de Fin</th><th className="p-3 text-right">Demanda Pronosticada</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {demandSummary.map((summaryItem) => (
+                                {results.demandSummary.map((summaryItem) => (
                                     <tr key={summaryItem.period} className="border-b hover:bg-gray-50">
                                         <td className="p-3 font-medium">{summaryItem.period}</td>
                                         <td className="p-3">{formatDate(summaryItem.start_date)}</td>
@@ -796,9 +716,176 @@ const PredictionView = () => {
                     </div>
                 </div>
             )}
-
         </div>
     );
+};
+
+// --- PMP VIEW ---
+const PMPView = ({ results, setResults }) => {
+    const [products, setProducts] = useState([]);
+    const [selectedSku, setSelectedSku] = useState(results?.selectedSku || '');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await fetch(`${API_URL}/items/`);
+                const allItems = await response.json();
+                const finishedProducts = allItems.filter(item => item.item_type === 'Producto Terminado');
+                setProducts(finishedProducts);
+                if (finishedProducts.length > 0 && !selectedSku) {
+                    setSelectedSku(finishedProducts[0].sku);
+                }
+            } catch (err) {
+                setError("No se pudieron cargar los productos.");
+            }
+        };
+        fetchProducts();
+    }, [selectedSku]);
+
+    const handleGeneratePMP = async () => {
+        if (!selectedSku) {
+            setError('Por favor, selecciona un producto.');
+            return;
+        }
+        setLoading(true);
+        setError('');
+
+        try {
+            const response = await fetch(`${API_URL}/pmp/initial-data/${selectedSku}`, { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.detail || 'Error al generar el PMP.');
+            }
+            
+            // Initialize the interactive table structure
+            const initialTable = data.demand_forecast.map(period => ({
+                period: period.period,
+                demand: period.total_demand,
+                plannedProduction: 0, // Editable field
+            }));
+            
+            // Set results to be managed by this component's state
+            setResults({
+                initialData: data,
+                tableState: initialTable,
+                selectedSku: selectedSku,
+            });
+
+        } catch (err) {
+            setError(err.message);
+            setResults(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    // Recalculate the PMP table whenever the planned production changes
+    const handleProductionChange = (index, value) => {
+        setResults(prev => {
+            const newTableState = [...prev.tableState];
+            newTableState[index].plannedProduction = parseInt(value, 10) || 0;
+            return { ...prev, tableState: newTableState };
+        });
+    };
+    
+    // Perform calculations for display
+    const calculatedPmp = React.useMemo(() => {
+        if (!results || !results.tableState) return null;
+
+        const { initialData, tableState } = results;
+        const calculatedPeriods = [];
+
+        tableState.forEach((period, index) => {
+            const initialInventory = index === 0 ? initialData.initial_inventory : calculatedPeriods[index - 1].projectedInventory;
+            const projectedInventory = initialInventory + period.plannedProduction - period.demand;
+            
+            calculatedPeriods.push({
+                ...period,
+                initialInventory,
+                projectedInventory
+            });
+        });
+
+        return {
+            headers: calculatedPeriods.map(p => p.period),
+            rows: {
+                'Inventario Inicial': calculatedPeriods.map(p => p.initialInventory),
+                'Pronostico': calculatedPeriods.map(p => p.demand),
+                'Producción Planificada': calculatedPeriods.map(p => p.plannedProduction),
+                'Inventario Proyectado': calculatedPeriods.map(p => p.projectedInventory),
+            }
+        };
+
+    }, [results]);
+
+
+    return (
+        <div className="p-8 space-y-8">
+            <div className="bg-white p-6 rounded-xl shadow-md">
+                 <h2 className="text-xl font-bold text-gray-800 mb-4">Generar Plan Maestro de Producción (PMP)</h2>
+                 <div className="flex items-end gap-4">
+                    <div className="flex-grow">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Producto Terminado</label>
+                        <select value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="p-2 border rounded-md w-full">
+                             <option value="">Selecciona un producto...</option>
+                            {products.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
+                        </select>
+                    </div>
+                    <button onClick={handleGeneratePMP} disabled={loading || !selectedSku} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
+                        <Calendar size={16}/> {loading ? 'Cargando...' : 'Generar PMP'}
+                    </button>
+                 </div>
+                 {error && <p className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-md">{error}</p>}
+            </div>
+
+            {results && calculatedPmp && (
+                 <div className="bg-white p-6 rounded-xl shadow-md">
+                     <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Plan Maestro para {results.selectedSku}</h3>
+                     </div>
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse">
+                             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                 <tr>
+                                     <th className="p-3 font-semibold border border-gray-200">Concepto</th>
+                                     {calculatedPmp.headers.map(header => <th key={header} className="p-3 font-semibold border border-gray-200 text-center">{header}</th>)}
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 {Object.entries(calculatedPmp.rows).map(([rowName, rowData]) => (
+                                     <tr key={rowName} className="border-b">
+                                         <td className="p-3 font-medium border border-gray-200 bg-gray-50">{rowName}</td>
+                                         {rowData.map((cellData, index) => {
+                                            if (rowName === 'Producción Planificada') {
+                                                return (
+                                                    <td key={index} className="p-1 border border-gray-200 text-center bg-yellow-50">
+                                                        <input 
+                                                            type="number"
+                                                            value={cellData}
+                                                            onChange={(e) => handleProductionChange(index, e.target.value)}
+                                                            className="w-20 p-2 text-center bg-transparent border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                                        />
+                                                    </td>
+                                                );
+                                            }
+
+                                            let cellClass = "p-3 border border-gray-200 text-center";
+                                            if (rowName === 'Inventario Proyectado' && cellData < 0) {
+                                                cellClass += " bg-red-100 text-red-800 font-bold";
+                                            }
+                                            return <td key={index} className={cellClass}>{cellData}</td>
+                                         })}
+                                     </tr>
+                                 ))}
+                             </tbody>
+                        </table>
+                     </div>
+                 </div>
+            )}
+        </div>
+    )
 };
 
 
@@ -910,16 +997,129 @@ const DashboardView = () => {
   );
 };
 
-const PlaceholderView = ({ title }) => <div className="p-8"><div className="bg-white p-10 rounded-2xl shadow-md text-center"><h2 className="text-2xl font-bold text-gray-800">{title}</h2></div></div>;
+const SettingsView = () => {
+    const [settings, setSettings] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
+
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                setLoading(true);
+                const response = await fetch(`${API_URL}/settings/`);
+                if (!response.ok) throw new Error('No se pudo cargar la configuración.');
+                setSettings(await response.json());
+            } catch (error) {
+                setError('Error al cargar la configuración: ' + error.message);
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        const finalValue = type === 'checkbox' ? checked : type === 'number' ? parseInt(value, 10) : value;
+        setSettings(prev => ({
+            ...prev,
+            [name]: finalValue,
+        }));
+    };
+
+    const handleSave = async () => {
+        setMessage('');
+        setError('');
+        try {
+            const response = await fetch(`${API_URL}/settings/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+            });
+            if (!response.ok) throw new Error('Error al guardar la configuración.');
+            setMessage('Configuración guardada exitosamente.');
+            setTimeout(() => setMessage(''), 3000); // Hide message after 3 seconds
+        } catch (error) {
+            setError(`Error: ${error.message}`);
+        }
+    };
+
+    if (loading) return <div className="p-8 text-center">Cargando configuración...</div>;
+    if (error || !settings) return <div className="p-8 text-center text-red-500">{error || 'No se pudo cargar la configuración.'}</div>;
+
+    return (
+        <div className="p-8 space-y-8 max-w-4xl mx-auto">
+            <div className="bg-white p-8 rounded-xl shadow-md">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">Configuración del Sistema</h2>
+                
+                {/* Company Info Section */}
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Información de la Empresa</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor="company_name" className="block text-sm font-medium text-gray-600">Nombre de la Empresa</label>
+                            <input id="company_name" name="company_name" value={settings.company_name} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                        </div>
+                        <div>
+                            <label htmlFor="currency_symbol" className="block text-sm font-medium text-gray-600">Símbolo de Moneda</label>
+                            <input id="currency_symbol" name="currency_symbol" value={settings.currency_symbol} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Production & Inventory Section */}
+                <div className="mb-8">
+                     <h3 className="text-lg font-semibold text-gray-700 mb-4">Producción e Inventario</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label htmlFor="default_lead_time_days" className="block text-sm font-medium text-gray-600">Lead Time de Compra por Defecto (días)</label>
+                            <input type="number" id="default_lead_time_days" name="default_lead_time_days" value={settings.default_lead_time_days} onChange={handleChange} className="mt-1 p-2 border rounded-md w-full" />
+                        </div>
+                        <div className="flex items-center pt-6">
+                            <input type="checkbox" id="allow_negative_stock" name="allow_negative_stock" checked={settings.allow_negative_stock} onChange={handleChange} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                            <label htmlFor="allow_negative_stock" className="ml-3 block text-sm text-gray-900">Permitir Stock Negativo</label>
+                             <span className="group relative ml-2">
+                                <HelpCircle size={16} className="text-gray-400 cursor-pointer"/>
+                                <span className="absolute bottom-full mb-2 w-48 p-2 text-xs text-white bg-gray-700 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    Permite que las cantidades de inventario caigan por debajo de cero. Usar con precaución.
+                                </span>
+                            </span>
+                        </div>
+                     </div>
+                </div>
+
+                <div className="flex justify-end items-center gap-4">
+                    {message && <p className="text-sm text-green-600">{message}</p>}
+                    {error && <p className="text-sm text-red-600">{error}</p>}
+                    <button onClick={handleSave} className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const PlaceholderView = ({ title }) => <div className="p-8"><div className="bg-white p-10 rounded-2xl shadow-md text-center"><h2 className="text-2xl font-bold text-gray-800">{title}</h2><p className="text-gray-500 mt-2">Este módulo estará disponible próximamente.</p></div></div>;
 function App() {
-  const [activeView, setActiveView] = useState('prediction');
+  const [activeView, setActiveView] = useState('pmp');
+  // State has been split per module for cleaner management and to fix update bugs.
+  const [predictionResults, setPredictionResults] = useState(null);
+  const [pmpResults, setPmpResults] = useState(null);
+
   const getTitle = (view) => ({'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 'mrp': 'Plan de Requerimiento de Materiales', 'settings': 'Configuración'}[view] || 'Dashboard');
+  
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard': return <DashboardView />;
       case 'items': return <ItemsView />; 
       case 'bom': return <BOMView />; 
-      case 'prediction': return <PredictionView />;
+      case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
+      case 'settings': return <SettingsView />;
+      case 'pmp': return <PMPView results={pmpResults} setResults={setPmpResults} />;
+      case 'mrp': return <PlaceholderView title={getTitle(activeView)} />;
       default: return <PlaceholderView title={getTitle(activeView)} />;
     }
   };
