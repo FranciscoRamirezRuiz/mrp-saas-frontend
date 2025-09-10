@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart } from 'lucide-react';
-import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts';
 
 
 const API_URL = 'http://127.0.0.1:8000';
@@ -495,14 +495,76 @@ const BomTreeViewModal = ({ sku, onClose }) => {
 }
 
 // --- PREDICTION VIEW ---
+const PaginatedTable = ({ data, rowsPerPage = 10 }) => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const totalPages = Math.ceil(data.length / rowsPerPage);
+
+    const handlePageChange = (page) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    };
+    
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const paginatedData = data.slice(startIndex, startIndex + rowsPerPage);
+
+    return (
+        <div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th className="p-3">Fecha</th>
+                            <th className="p-3">Pronóstico (yhat)</th>
+                            <th className="p-3">Límite Inferior</th>
+                            <th className="p-3">Límite Superior</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paginatedData.map((row, index) => (
+                            <tr key={index} className="border-b hover:bg-gray-50">
+                                <td className="p-3">{row.ds}</td>
+                                <td className="p-3 font-semibold">{row.yhat.toFixed(2)}</td>
+                                <td className="p-3">{row.yhat_lower ? row.yhat_lower.toFixed(2) : 'N/A'}</td>
+                                <td className="p-3">{row.yhat_upper ? row.yhat_upper.toFixed(2) : 'N/A'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <div className="flex justify-between items-center mt-4">
+                <span className="text-sm text-gray-700">
+                    Página {currentPage} de {totalPages}
+                </span>
+                <div className="inline-flex -space-x-px">
+                    <button onClick={() => handlePageChange(1)} disabled={currentPage === 1} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-l-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronsLeft size={16}/></button>
+                    <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronLeft size={16}/></button>
+                    <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronRight size={16}/></button>
+                    <button onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} className="px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"><ChevronsRight size={16}/></button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const PredictionView = () => {
     const [file, setFile] = useState(null);
     const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState([]);
     const [selectedSku, setSelectedSku] = useState('');
     const [historicalData, setHistoricalData] = useState([]);
     const [forecastData, setForecastData] = useState([]);
+    const [forecastMetrics, setForecastMetrics] = useState(null);
+    const [demandSummary, setDemandSummary] = useState([]);
+    const [forecastPeriods, setForecastPeriods] = useState(30);
+    const [forecastModel, setForecastModel] = useState('prophet');
+
+    // State for pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -516,6 +578,7 @@ const PredictionView = () => {
                 }
             } catch (error) {
                 console.error("Error fetching products:", error);
+                setError("No se pudieron cargar los productos.");
             }
         };
         fetchProducts();
@@ -523,15 +586,18 @@ const PredictionView = () => {
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
+        setMessage('');
+        setError('');
     };
 
     const handleFileUpload = async () => {
         if (!file) {
-            setMessage('Por favor, selecciona un archivo CSV.');
+            setError('Por favor, selecciona un archivo CSV.');
             return;
         }
         setLoading(true);
         setMessage('');
+        setError('');
         const formData = new FormData();
         formData.append('file', file);
 
@@ -546,107 +612,191 @@ const PredictionView = () => {
             }
             setMessage(data.message);
         } catch (error) {
-            setMessage(`Error: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleGenerateForecast = async () => {
-        if (!selectedSku) {
-            setMessage('Por favor, selecciona un producto.');
-            return;
-        }
-        setLoading(true);
-        setMessage('');
-        setHistoricalData([]);
-        setForecastData([]);
-
-        try {
-            // 1. Fetch historical data for chart
-            const salesResponse = await fetch(`${API_URL}/sales/${selectedSku}`);
-            if (salesResponse.ok) {
-                const sales = await salesResponse.json();
-                setHistoricalData(sales.map(s => ({...s, ds: new Date(s.ds).toLocaleDateString() })));
-            }
-
-            // 2. Generate and fetch forecast data
-            const forecastResponse = await fetch(`${API_URL}/forecast/${selectedSku}`, {
-                method: 'POST',
-            });
-            const data = await forecastResponse.json();
-            if (!forecastResponse.ok) {
-                throw new Error(data.detail || 'Error al generar el pronóstico.');
-            }
-            setForecastData(data.map(d => ({...d, ds: new Date(d.ds).toLocaleDateString() })));
-            setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
-        } catch (error) {
-            setMessage(`Error: ${error.message}`);
+            setError(`Error: ${error.message}`);
         } finally {
             setLoading(false);
         }
     };
     
+    // Function to safely format dates from YYYY-MM-DD strings
+    const formatDate = (dateString) => {
+        const [year, month, day] = dateString.split('-');
+        return new Date(year, month - 1, day).toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+        });
+    };
+    
+    const handleGenerateForecast = async () => {
+        if (!selectedSku) {
+            setError('Por favor, selecciona un producto.');
+            return;
+        }
+        setLoading(true);
+        setMessage('');
+        setError('');
+        setHistoricalData([]);
+        setForecastData([]);
+        setForecastMetrics(null);
+        setDemandSummary([]);
+        setCurrentPage(1);
+
+        try {
+            // 1. Fetch historical data for the selected SKU
+            const salesResponse = await fetch(`${API_URL}/sales/${selectedSku}`);
+            let sales = [];
+            if (salesResponse.ok) {
+                sales = await salesResponse.json();
+                setHistoricalData(sales.map(s => ({ ...s, ds: new Date(s.ds + 'T00:00:00') })));
+            } else {
+                console.warn("No se encontraron datos históricos para este SKU.");
+            }
+
+            // 2. Generate and fetch forecast data
+            const forecastUrl = `${API_URL}/forecast/${selectedSku}?periods=${forecastPeriods}&model_type=${forecastModel}`;
+            const forecastResponse = await fetch(forecastUrl, { method: 'POST' });
+            
+            const data = await forecastResponse.json();
+            if (!forecastResponse.ok) {
+                throw new Error(data.detail || 'Error al generar el pronóstico.');
+            }
+
+            const formattedForecast = data.forecast.map(d => ({ ...d, ds: new Date(d.ds) }));
+            
+            // Combine historical data with forecast data for a unified chart
+            const combinedData = [
+                ...sales.map(s => ({ ds: new Date(s.ds + 'T00:00:00'), historico: s.y })),
+                ...formattedForecast.map(f => ({
+                    ds: f.ds,
+                    pronostico: f.yhat,
+                    min: f.yhat_lower,
+                    max: f.yhat_upper
+                }))
+            ].sort((a, b) => a.ds - b.ds);
+
+            setForecastData(combinedData);
+            setForecastMetrics(data.metrics);
+            setDemandSummary(data.summary);
+            setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
+        } catch (error) {
+            setError(`Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Pagination logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentForecastItems = forecastData.slice(indexOfFirstItem, indexOfLastItem);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+    
     return (
         <div className="p-8 space-y-8">
             <div className="bg-white p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">1. Cargar Historial de Ventas</h2>
-                <p className="text-sm text-gray-600 mb-4">Sube un archivo CSV con las columnas: `fecha_venta` (YYYY-MM-DD), `id_producto`, `cantidad_vendida`.</p>
+                <p className="text-sm text-gray-600 mb-4">Sube un archivo CSV con las columnas: `fecha_venta` (AAAA-MM-DD), `id_producto`, `cantidad_vendida`.</p>
                 <div className="flex items-center gap-4">
                     <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
                     <button onClick={handleFileUpload} disabled={loading} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
                         <Upload size={16}/> {loading ? 'Cargando...' : 'Cargar Archivo'}
                     </button>
                 </div>
-                {message && <p className="mt-4 text-sm text-gray-700">{message}</p>}
+                {message && <p className="mt-4 text-sm text-green-700 bg-green-50 p-3 rounded-md">{message}</p>}
+                {error && <p className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-md">{error}</p>}
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">2. Generar Pronóstico de Demanda</h2>
-                <div className="flex items-center gap-4">
-                     <select value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="p-2 border rounded-md w-full md:w-1/3">
-                        <option value="">Selecciona un producto...</option>
-                        {products.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
-                    </select>
-                    <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md disabled:bg-gray-400">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                     <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+                        <select value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="p-2 border rounded-md w-full">
+                            <option value="">Selecciona un producto...</option>
+                            {products.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
+                        </select>
+                     </div>
+                     <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Pronóstico</label>
+                        <select value={forecastModel} onChange={(e) => setForecastModel(e.target.value)} className="p-2 border rounded-md w-full">
+                            <option value="prophet">Prophet (Recomendado)</option>
+                            <option value="ses">Suavizado Exponencial Simple</option>
+                        </select>
+                     </div>
+                     <div className="w-full">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Días a Pronosticar</label>
+                        <input type="number" value={forecastPeriods} onChange={(e) => setForecastPeriods(e.target.value)} className="p-2 border rounded-md w-full" placeholder="Ej. 30"/>
+                     </div>
+                </div>
+                <div className="mt-4">
+                    <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-green-600 rounded-md disabled:bg-gray-400">
                         <LineChart size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
                     </button>
                 </div>
             </div>
             
-            {historicalData.length > 0 && (
-                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Ventas Históricas de {selectedSku}</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <RechartsLineChart data={historicalData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                            <XAxis dataKey="ds" />
-                            <YAxis />
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="y" name="Ventas" stroke="#8884d8" />
-                        </RechartsLineChart>
-                    </ResponsiveContainer>
-                </div>
-            )}
-            
             {forecastData.length > 0 && (
                 <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-bold text-gray-800 mb-4">Pronóstico para {selectedSku}</h3>
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">Pronóstico para {selectedSku}</h3>
+                        {forecastMetrics && (
+                            <div className="text-xs text-right text-gray-600 bg-gray-50 p-2 rounded-md">
+                                <p><strong>Métricas del Modelo:</strong></p>
+                                <p>Error Absoluto Medio (MAE): <strong>{forecastMetrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
+                                <p>Raíz del Error Cuadrático Medio (RMSE): <strong>{forecastMetrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
+                            </div>
+                        )}
+                    </div>
                     <ResponsiveContainer width="100%" height={400}>
                          <AreaChart data={forecastData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="ds" />
+                            <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString()} />
                             <YAxis />
-                            <Tooltip />
+                            <Tooltip labelFormatter={(time) => new Date(time).toLocaleDateString()} />
                             <Legend />
-                            <Area type="monotone" dataKey="yhat" name="Pronóstico" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.3} />
-                            <Area type="monotone" dataKey="yhat_lower" name="Límite Inferior" stroke="#ccc" fill="#ccc" fillOpacity={0.2} />
-                            <Area type="monotone" dataKey="yhat_upper" name="Límite Superior" stroke="#ccc" fill="#ccc" fillOpacity={0.2} />
+                            <Area type="monotone" dataKey="historico" name="Ventas Históricas" stroke="#1d4ed8" fill="#3b82f6" fillOpacity={0.6} />
+                            <Area type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" fill="#22c55e" fillOpacity={0.4} />
+                            {forecastModel === 'prophet' && 
+                                <Area type="monotone" dataKey="max" name="Límite Superior" stroke="#9ca3af" fill="#e5e7eb" fillOpacity={0.2} strokeDasharray="5 5" />
+                            }
+                            {forecastModel === 'prophet' && 
+                                <Area type="monotone" dataKey="min" name="Límite Inferior" stroke="#9ca3af" fill="#e5e7eb" fillOpacity={0.2} strokeDasharray="5 5" />
+                            }
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             )}
+
+            {demandSummary.length > 0 && (
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen de Demanda Semanal para {selectedSku}</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th className="p-3">Periodo</th>
+                                    <th className="p-3">Fecha de Inicio</th>
+                                    <th className="p-3">Fecha de Fin</th>
+                                    <th className="p-3 text-right">Demanda Pronosticada</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {demandSummary.map((summaryItem) => (
+                                    <tr key={summaryItem.period} className="border-b hover:bg-gray-50">
+                                        <td className="p-3 font-medium">{summaryItem.period}</td>
+                                        <td className="p-3">{formatDate(summaryItem.start_date)}</td>
+                                        <td className="p-3">{formatDate(summaryItem.end_date)}</td>
+                                        <td className="p-3 text-right font-semibold">{summaryItem.total_demand.toLocaleString()} unidades</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
@@ -781,3 +931,4 @@ function App() {
   );
 }
 export default App;
+
