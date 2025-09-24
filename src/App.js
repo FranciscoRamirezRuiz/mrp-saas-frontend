@@ -1,6 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, MoreVertical, Info, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle } from 'lucide-react';
 import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { CSVLink } from 'react-csv';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 
 const API_URL = 'http://127.0.0.1:8000';
@@ -37,56 +40,100 @@ const Header = ({ title }) => (
   </header>
 );
 
-const ItemModal = ({ item, onClose, onSave, itemTypeFilter }) => { 
-    const attributesToString = (attrs) => Object.entries(attrs || {}).map(([key, value]) => `${key}:${value}`).join(', ');
-    const stringToAttributes = (str) => {
-        if (!str) return {};
-        try {
-            return str.split(',').reduce((acc, pair) => {
-                const [key, value] = pair.split(':');
-                if (key && value) acc[key.trim()] = value.trim();
-                return acc;
-            }, {});
-        } catch { return {}; }
+const ItemModal = ({ item, onClose, onSave }) => { 
+    const [formData, setFormData] = useState(item);
+    // NUEVO: Estados para las opciones de los desplegables
+    const [locations, setLocations] = useState([]);
+    const [units, setUnits] = useState([]);
+
+    // NUEVO: useEffect para cargar las opciones desde la configuración
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const response = await fetch(`${API_URL}/settings/`);
+                const settings = await response.json();
+                setLocations(settings.locations || []);
+                setUnits(settings.units_of_measure || []);
+            } catch (error) {
+                console.error("Error cargando la configuración:", error);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        // Convertir el stock crítico a número
+        const finalValue = name === 'reorder_point' ? parseInt(value, 10) || 0 : value;
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
-    const [formData, setFormData] = useState(
-            item ? { ...item, attributes: attributesToString(item.attributes) } : 
-            { sku: '', name: '', unit_of_measure: 'Unidades', category: '', in_stock: 0, location: '', reorder_point: 0, reorder_quantity: 0, attributes: '', status: 'Activo', expiration_date: null, item_type: itemTypeFilter ? itemTypeFilter[0] : 'Materia Prima' }
-    );
-
-    const handleChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); };
     const handleSubmit = (e) => { 
         e.preventDefault(); 
-        const finalData = { ...formData, attributes: stringToAttributes(formData.attributes) };
-        onSave(finalData, !!item);
+        onSave(formData);
     };
+
+    if (!item) return null; // No renderizar nada si no hay un ítem para editar
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"><div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
-            <div className="flex justify-between items-center mb-6"><h2 className="text-2xl font-bold text-gray-800">{item ? 'Editar Ítem' : 'Crear Nuevo Ítem'}</h2><button onClick={onClose}><X size={24} /></button></div>
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-                <h3 className="font-semibold text-gray-700">Información Esencial</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><input name="sku" value={formData.sku} onChange={handleChange} placeholder="SKU (N° de Pieza)" required className="p-2 border rounded" disabled={!!item} /><input name="name" value={formData.name} onChange={handleChange} placeholder="Nombre o Descripción" required className="p-2 border rounded" /></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><input name="category" value={formData.category} onChange={handleChange} placeholder="Categoría" className="p-2 border rounded" /><input name="unit_of_measure" value={formData.unit_of_measure} onChange={handleChange} placeholder="Unidad de Medida" className="p-2 border rounded" /></div>
-                <h3 className="font-semibold text-gray-700 pt-2">Gestión de Stock y Logística</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><input name="location" value={formData.location || ''} onChange={handleChange} placeholder="Ubicación" className="p-2 border rounded" /><input type="number" name="in_stock" value={formData.in_stock} onChange={handleChange} placeholder="En Stock" className="p-2 border rounded" /></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="number" name="reorder_point" value={formData.reorder_point || ''} onChange={handleChange} placeholder="Stock Crítico" className="p-2 border rounded" /><input type="number" name="reorder_quantity" value={formData.reorder_quantity || ''} onChange={handleChange} placeholder="Cantidad a Reordenar" className="p-2 border rounded" /></div>
-                <h3 className="font-semibold text-gray-700 pt-2">Atributos y Estado</h3>
-                <div><label className="text-sm font-medium text-gray-600">Atributos (ej. color:rojo, talla:M)</label><input name="attributes" value={formData.attributes} onChange={handleChange} placeholder="clave:valor, clave:valor" className="p-2 border rounded w-full mt-1" /></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><select name="status" value={formData.status} onChange={handleChange} className="p-2 border rounded"><option>Activo</option><option>Obsoleto</option><option>Descontinuado</option></select><div><label className="text-sm text-gray-500">Fecha de Vencimiento</label><input type="date" name="expiration_date" value={formData.expiration_date || ''} onChange={handleChange} className="p-2 border rounded w-full" /></div></div>
-                <select name="item_type" value={formData.item_type} onChange={handleChange} className="p-2 border rounded w-full">
-                    {itemTypeFilter ? 
-                        itemTypeFilter.map(type => <option key={type} value={type}>{type}</option>) :
-                        (<>
-                            <option>Materia Prima</option>
-                            <option>Producto Intermedio</option>
-                            <option>Producto Terminado</option>
-                        </>)
-                    }
-                </select>
-                <div className="flex justify-end gap-4 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Guardar</button></div>
-            </form>
-        </div></div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Ver / Editar Ítem</h2>
+                    <button onClick={onClose}><X size={24} /></button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-4">
+                    {/* --- Campos deshabilitados (solo visualización) --- */}
+                    <h3 className="font-semibold text-gray-700">Información del Ítem (Solo lectura)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input value={`SKU: ${formData.sku}`} disabled className="p-2 border rounded bg-gray-100" />
+                        <input value={`Nombre: ${formData.name}`} disabled className="p-2 border rounded bg-gray-100" />
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input value={`Categoría: ${formData.category}`} disabled className="p-2 border rounded bg-gray-100" />
+                        <input value={`Stock Actual: ${formData.in_stock}`} disabled className="p-2 border rounded bg-gray-100" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input value={`Tipo: ${formData.item_type}`} disabled className="p-2 border rounded bg-gray-100" />
+                         <input value={`Estado: ${formData.status}`} disabled className="p-2 border rounded bg-gray-100" />
+                    </div>
+
+                    {/* --- Campos editables --- */}
+                    <h3 className="font-semibold text-gray-700 pt-4">Parámetros Editables</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Stock Crítico</label>
+                            <input 
+                                type="number" 
+                                name="reorder_point" 
+                                value={formData.reorder_point || ''} 
+                                onChange={handleChange} 
+                                placeholder="Punto de Reorden" 
+                                className="p-2 border rounded w-full mt-1" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Ubicación</label>
+                            <select name="location" value={formData.location || ''} onChange={handleChange} className="p-2 border rounded w-full mt-1">
+                                <option value="">Seleccione...</option>
+                                {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                           <label className="text-sm font-medium text-gray-600">Unidad de Medida</label>
+                            <select name="unit_of_measure" value={formData.unit_of_measure} onChange={handleChange} className="p-2 border rounded w-full mt-1">
+                                {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-4 pt-6">
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
+                        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 };
 
@@ -97,80 +144,218 @@ const ItemsView = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [itemToEdit, setItemToEdit] = useState(null);
-    const [itemToView, setItemToView] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
-    const [openActionMenu, setOpenActionMenu] = useState(null);
-    const actionMenuRef = useRef(null);
+    const [isFileModalOpen, setIsFileModalOpen] = useState(false);
+    
+    // Estado para manejar la selección múltiple
+    const [selectedItems, setSelectedItems] = useState([]);
 
-    const fetchItems = useCallback(async (query = '') => { try { setLoading(true); const response = await fetch(`${API_URL}/items/?search=${query}`); if (!response.ok) throw new Error('Error al cargar.'); setItems(await response.json()); } catch (err) { setError(err.message); } finally { setLoading(false); }}, []);
+    const fetchItems = useCallback(async (query = '') => { 
+        try { 
+            setLoading(true); 
+            const response = await fetch(`${API_URL}/items/?search=${query}`); 
+            if (!response.ok) throw new Error('Error al cargar.'); 
+            setItems(await response.json()); 
+        } catch (err) { 
+            setError(err.message); 
+        } finally { 
+            setLoading(false); 
+        }
+    }, []);
+    
     useEffect(() => { fetchItems(); }, [fetchItems]);
 
-    useEffect(() => { const handleClickOutside = (event) => { if (actionMenuRef.current && !actionMenuRef.current.contains(event.target)) { setOpenActionMenu(null); }}; document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside); }, []);
-
-    const handleSaveItem = async (itemData, isEditing) => {
-        const method = isEditing ? 'PUT' : 'POST';
-        const url = isEditing ? `${API_URL}/items/${itemData.sku}` : `${API_URL}/items/`;
+    const handleUpdateItem = async (itemData, fieldsToUpdate) => {
         try {
-            const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itemData) });
+            const response = await fetch(`${API_URL}/items/${itemData.sku}`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(fieldsToUpdate) 
+            });
             if (!response.ok) throw new Error((await response.json()).detail || 'Error al guardar.');
-            setIsCreateModalOpen(false); setItemToEdit(null); fetchItems(searchQuery);
+            setItemToEdit(null); 
+            fetchItems(searchQuery);
         } catch (err) { alert(`Error: ${err.message}`); }
     };
     
+    const handleStatusChange = (item, newStatus) => {
+        handleUpdateItem(item, { status: newStatus });
+    };
+
     const handleDeleteItem = async (sku) => {
         try {
             const response = await fetch(`${API_URL}/items/${sku}`, { method: 'DELETE' });
             if (!response.ok && response.status !== 204) throw new Error('Error al eliminar.');
-            setItemToDelete(null); fetchItems(searchQuery);
+            setItemToDelete(null); 
+            fetchItems(searchQuery);
         } catch(err) { alert(`Error: ${err.message}`); }
+    };
+
+    // --- Lógica de Selección Múltiple y Acciones Masivas ---
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedItems(items.map(item => item.sku));
+        } else {
+            setSelectedItems([]);
+        }
+    };
+
+    const handleSelectItem = (sku) => {
+        setSelectedItems(prev => 
+            prev.includes(sku) ? prev.filter(id => id !== sku) : [...prev, sku]
+        );
+    };
+    
+    const handleBulkDelete = async () => {
+        if (window.confirm(`¿Seguro que quieres eliminar ${selectedItems.length} ítems seleccionados?`)) {
+            try {
+                await fetch(`${API_URL}/items/bulk-delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skus: selectedItems })
+                });
+                setSelectedItems([]);
+                fetchItems();
+            } catch (err) {
+                alert(`Error al eliminar en masa: ${err.message}`);
+            }
+        }
+    };
+    
+    const handleBulkStatusChange = async (status) => {
+         try {
+            await fetch(`${API_URL}/items/bulk-update-status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skus: selectedItems, status: status })
+            });
+            setSelectedItems([]);
+            fetchItems();
+        } catch (err) {
+            alert(`Error al actualizar estado en masa: ${err.message}`);
+        }
+    };
+
+    // --- Lógica de Exportación ---
+    
+    const exportHeaders = [
+        { label: "SKU", key: "sku" },
+        { label: "Nombre", key: "name" },
+        { label: "Categoría", key: "category" },
+        { label: "En Stock", key: "in_stock" },
+        { label: "Unidad", key: "unit_of_measure" },
+        { label: "Ubicación", key: "location" },
+        { label: "Tipo", key: "item_type" },
+        { label: "Estado", key: "status" },
+    ];
+
+    const handlePdfExport = () => {
+        const doc = new jsPDF();
+        autoTable(doc, {
+            head: [exportHeaders.map(h => h.label)],
+            body: items.map(item => exportHeaders.map(h => item[h.key] ?? 'N/A')),
+        });
+        doc.save('inventario.pdf');
+    };
+
+    // --- Componente del Modal de Carga ---
+    const FileUploadModal = ({ onClose }) => {
+        const [file, setFile] = useState(null);
+        const [message, setMessage] = useState('');
+        const [error, setError] = useState('');
+        const [loading, setLoading] = useState(false);
+
+        const handleFileChange = (e) => setFile(e.target.files[0]);
+
+        const handleFileUpload = async () => {
+            if (!file) {
+                setError('Por favor, selecciona un archivo CSV.');
+                return;
+            }
+            setLoading(true);
+            setMessage('');
+            setError('');
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_URL}/items/upload`, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Error al cargar el archivo.');
+                setMessage(data.message);
+                fetchItems();
+                setTimeout(() => onClose(), 2000); 
+            } catch (err) {
+                setError(`Error: ${err.message}`);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-lg">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">Importar Ítems desde CSV</h2>
+                        <button onClick={onClose}><X size={24} /></button>
+                    </div>
+                    <div className="space-y-4">
+                        <p className="text-sm text-gray-600">El archivo debe contener las columnas: sku, name, category, in_stock, item_type.</p>
+                        <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                        <button onClick={handleFileUpload} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
+                            <Upload size={16}/> {loading ? 'Cargando...' : 'Cargar Archivo'}
+                        </button>
+                        {message && <p className="mt-2 text-sm text-green-700">{message}</p>}
+                        {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+                    </div>
+                </div>
+            </div>
+        );
     };
     
     return (
         <div className="p-8">
-            {isCreateModalOpen && <ItemModal onClose={() => setIsCreateModalOpen(false)} onSave={handleSaveItem} />}
-            {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={handleSaveItem} />}
-            {itemToView && 
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-2xl font-bold text-gray-800">Información del Ítem</h2>
-                            <button onClick={() => setItemToView(null)}><X size={24} /></button>
-                        </div>
-                        <div className="space-y-2 text-gray-700">
-                            <p><strong>SKU:</strong> {itemToView.sku}</p>
-                            <p><strong>Nombre:</strong> {itemToView.name}</p>
-                            <p><strong>Categoría:</strong> {itemToView.category}</p>
-                            {itemToView.expiration_date && <p><strong>Fecha de Vencimiento:</strong> {new Date(itemToView.expiration_date).toLocaleDateString()}</p>}
-                            <p><strong>Atributos:</strong> {Object.entries(itemToView.attributes).map(([key, value]) => `${key}: ${value}`).join(', ') || 'N/A'}</p>
-                        </div>
-                    </div>
-                </div>
-            }
+            {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={(data) => handleUpdateItem(data, { reorder_point: data.reorder_point, location: data.location, unit_of_measure: data.unit_of_measure })} />}
+            {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
 
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div className="flex items-center gap-2 w-full md:w-1/3">
+                 <div className="flex items-center gap-2 w-full md:w-1/3">
                     <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems(searchQuery)} placeholder="Buscar por SKU o Nombre..." className="p-2 border rounded-md w-full" />
                     <button onClick={() => fetchItems(searchQuery)} className="p-2 bg-blue-600 text-white rounded-md"><Search size={20}/></button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 p-2 border rounded-md text-sm"><FileDown size={16}/>PDF</button>
-                    <button className="flex items-center gap-2 p-2 border rounded-md text-sm"><FileDown size={16}/>CSV</button>
-                    <button className="flex items-center gap-2 p-2 border rounded-md text-sm"><Upload size={16}/>Importar</button>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 p-2 text-sm font-semibold text-white bg-blue-600 rounded-md">
-                        <PlusCircle size={16} />Crear Ítem
+                    <button onClick={handlePdfExport} className="flex items-center gap-2 p-2 border rounded-md text-sm"><FileDown size={16}/>PDF</button>
+                    <CSVLink data={items} headers={exportHeaders} filename={"inventario.csv"} className="flex items-center gap-2 p-2 border rounded-md text-sm"><FileDown size={16}/>CSV</CSVLink>
+                    <button onClick={() => setIsFileModalOpen(true)} className="flex items-center gap-2 p-2 text-sm font-semibold text-white bg-green-600 rounded-md">
+                        <Upload size={16}/>Importar Ítems
                     </button>
                 </div>
             </div>
+
+            {selectedItems.length > 0 && (
+                <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-md mb-6 flex justify-between items-center">
+                    <span className="font-semibold">{selectedItems.length} ítem(s) seleccionado(s)</span>
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm">Cambiar estado a:</span>
+                        <button onClick={() => handleBulkStatusChange('Activo')} className="px-2 py-1 text-xs bg-green-500 text-white rounded">Activo</button>
+                        <button onClick={() => handleBulkStatusChange('Inactivo')} className="px-2 py-1 text-xs bg-red-500 text-white rounded">Inactivo</button>
+                        <button onClick={() => handleBulkStatusChange('Obsoleto')} className="px-2 py-1 text-xs bg-gray-500 text-white rounded">Obsoleto</button>
+                        <div className="border-l h-6 border-blue-300"></div>
+                        <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 bg-red-100 rounded-md font-semibold"><Trash2 size={14}/>Eliminar Seleccionados</button>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white p-4 rounded-xl shadow-md"><div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                            <th className="p-3">SKU</th><th className="p-3">Nombre</th><th className="p-3">Categoría</th><th className="p-3">En Stock</th>
-                            <th className="p-3">Ubicación</th><th className="p-3">Fecha Venc.</th><th className="p-3">Estado</th><th className="p-3">Acciones</th>
+                            <th className="p-3 w-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedItems.length > 0 && selectedItems.length === items.length} /></th>
+                            <th className="p-3">SKU</th><th className="p-3">Nombre</th><th className="p-3">Tipo de Prod.</th><th className="p-3">En Stock</th>
+                            <th className="p-3">Ubicación</th><th className="p-3">Estado</th><th className="p-3">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -178,25 +363,43 @@ const ItemsView = () => {
                         : error ? (<tr><td colSpan="8" className="text-center text-red-500 p-4">{error}</td></tr>) 
                         : (items.map(item => {
                             const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
-                            const expirationDate = item.expiration_date ? new Date(item.expiration_date) : null;
-                            const today = new Date(); today.setHours(0,0,0,0);
-                            const isExpired = expirationDate && expirationDate < today;
+                            const statusStyles = {
+                                'Activo': 'bg-green-100 text-green-800',
+                                'Inactivo': 'bg-red-100 text-red-800',
+                                'Obsoleto': 'bg-gray-100 text-gray-800',                               
+                            };
                             return (
-                            <tr key={item.sku} className={`border-b hover:bg-gray-50 ${needsReorder ? 'bg-yellow-50' : ''} ${isExpired ? 'bg-red-50' : ''}`}>
-                                <td className="p-3 font-medium text-gray-900">{item.sku}</td><td className="p-3">{item.name}</td><td className="p-3">{item.category}</td>
+                            <tr key={item.sku} className={`border-b hover:bg-gray-50 ${selectedItems.includes(item.sku) ? 'bg-blue-50' : ''}`}>
+                                <td className="p-3"><input type="checkbox" checked={selectedItems.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} /></td>
+                                <td className="p-3 font-medium text-gray-900">{item.sku}</td><td className="p-3">{item.name}</td>
+                                <td className="p-3 text-gray-500">{item.item_type}</td>
                                 <td className={`p-3 font-semibold ${needsReorder ? 'text-yellow-800' : 'text-gray-800'}`}>{item.in_stock} {item.unit_of_measure}</td>
                                 <td className="p-3">{item.location ?? 'N/A'}</td>
-                                <td className={`p-3 ${isExpired ? 'text-red-600 font-bold' : ''}`}>{expirationDate ? expirationDate.toLocaleDateString() : 'N/A'}</td>
-                                <td className="p-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${ item.status === 'Activo' ? 'bg-green-100 text-green-800' : item.status === 'Obsoleto' ? 'bg-gray-100 text-gray-800' : 'bg-red-100 text-red-800'}`}>{item.status}</span></td>
-                                <td className="p-3 relative">
-                                    <button onClick={() => setOpenActionMenu(openActionMenu === item.sku ? null : item.sku)}><MoreVertical size={16}/></button>
-                                    {openActionMenu === item.sku && (
-                                        <div ref={actionMenuRef} className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border">
-                                            <button onClick={() => { setItemToView(item); setOpenActionMenu(null); }} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"><Info size={14} className="mr-2"/>Más Información</button>
-                                            <button onClick={() => { setItemToEdit(item); setOpenActionMenu(null); }} className="flex items-center w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"><Edit size={14} className="mr-2"/>Editar</button>
-                                            <button onClick={() => { setItemToDelete(item); setOpenActionMenu(null); }} className="flex items-center w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100"><Trash2 size={14} className="mr-2"/>Eliminar</button>
-                                        </div>
-                                    )}
+                                <td className="p-3 overflow-visible">
+                                    <select 
+                                        value={item.status} 
+                                        onChange={(e) => handleStatusChange(item, e.target.value)}
+                                        className={`px-3 py-1 text-xs font-semibold rounded-full w-28 text-center border-none appearance-none cursor-pointer ${statusStyles[item.status] || 'bg-gray-100'}`}
+                                        style={{ backgroundImage: 'none' }}
+                                    >
+                                        <option value="Activo">Activo</option>
+                                        <option value="Inactivo">Inactivo</option>
+                                        <option value="Obsoleto">Obsoleto</option>
+                                    </select>
+                                </td>
+                                <td className="p-3 flex gap-4">
+                                    <button 
+                                        onClick={() => setItemToEdit(item)} 
+                                        className="text-blue-600 hover:text-blue-800" 
+                                        title="Editar">
+                                        <Edit size={16}/>
+                                    </button>
+                                    <button 
+                                        onClick={() => setItemToDelete(item)} 
+                                        className="text-red-600 hover:text-red-800" 
+                                        title="Eliminar">
+                                        <Trash2 size={16}/>
+                                    </button>
                                 </td>
                             </tr>
                             );
@@ -341,7 +544,6 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
 const BOMEditor = ({ allItems, bomSku, onClose, onCreateNewItem }) => {
     const [parentItem, setParentItem] = useState(null);
     const [components, setComponents] = useState([]);
-    const [loading, setLoading] = useState(true);
 
     const availableParents = allItems.filter(item => ['Producto Terminado', 'Producto Intermedio'].includes(item.item_type));
     const availableComponents = allItems.filter(item => ['Materia Prima', 'Producto Intermedio'].includes(item.item_type));
@@ -359,7 +561,6 @@ const BOMEditor = ({ allItems, bomSku, onClose, onCreateNewItem }) => {
                     }
                 } catch (error) { console.error("Error cargando BOM:", error); }
             }
-            setLoading(false);
         };
         loadBom();
     }, [bomSku, allItems]);
@@ -1002,7 +1203,9 @@ const SettingsView = () => {
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
-
+    // NUEVO: Estados para los nuevos campos de las listas
+    const [newLocation, setNewLocation] = useState('');
+    const [newUnit, setNewUnit] = useState('');
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -1047,6 +1250,22 @@ const SettingsView = () => {
         }
     };
 
+    const handleAddToList = (listName, value, setValue) => {
+        if (!value || settings[listName].includes(value)) return;
+        setSettings(prev => ({
+            ...prev,
+            [listName]: [...prev[listName], value]
+        }));
+        setValue('');
+    };    
+
+    const handleRemoveFromList = (listName, value) => {
+        setSettings(prev => ({
+            ...prev,
+            [listName]: prev[listName].filter(item => item !== value)
+        }));
+    };
+
     if (loading) return <div className="p-8 text-center">Cargando configuración...</div>;
     if (error || !settings) return <div className="p-8 text-center text-red-500">{error || 'No se pudo cargar la configuración.'}</div>;
 
@@ -1089,6 +1308,45 @@ const SettingsView = () => {
                             </span>
                         </div>
                      </div>
+                </div>
+
+                {/* --- NUEVA SECCIÓN: Gestión de Listas Desplegables --- */}
+                <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros de Ítems</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Gestión de Ubicaciones */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600">Ubicaciones de Bodega</label>
+                            <div className="flex items-center gap-2 mt-1">
+                                <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nueva ubicación" className="p-2 border rounded-md w-full" />
+                                <button onClick={() => handleAddToList('locations', newLocation, setNewLocation)} className="p-2 bg-blue-500 text-white rounded-md"><Plus size={16}/></button>
+                            </div>
+                            <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                                {settings.locations.map(loc => (
+                                    <li key={loc} className="flex justify-between items-center text-sm p-1 bg-gray-50 rounded">
+                                        {loc}
+                                        <button onClick={() => handleRemoveFromList('locations', loc)} className="text-red-500"><X size={14}/></button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        {/* Gestión de Unidades de Medida */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600">Unidades de Medida</label>
+                             <div className="flex items-center gap-2 mt-1">
+                                <input value={newUnit} onChange={(e) => setNewUnit(e.target.value)} placeholder="Nueva unidad" className="p-2 border rounded-md w-full" />
+                                <button onClick={() => handleAddToList('units_of_measure', newUnit, setNewUnit)} className="p-2 bg-blue-500 text-white rounded-md"><Plus size={16}/></button>
+                            </div>
+                            <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                                {settings.units_of_measure.map(unit => (
+                                    <li key={unit} className="flex justify-between items-center text-sm p-1 bg-gray-50 rounded">
+                                        {unit}
+                                        <button onClick={() => handleRemoveFromList('units_of_measure', unit)} className="text-red-500"><X size={14}/></button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex justify-end items-center gap-4">
