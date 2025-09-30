@@ -151,20 +151,64 @@ const ItemsView = () => {
     // Estado para manejar la selección múltiple
     const [selectedItems, setSelectedItems] = useState([]);
 
-    const fetchItems = useCallback(async (query = '') => { 
-        try { 
-            setLoading(true); 
-            const response = await fetch(`${API_URL}/items/?search=${query}`); 
-            if (!response.ok) throw new Error('Error al cargar.'); 
-            setItems(await response.json()); 
-        } catch (err) { 
-            setError(err.message); 
-        } finally { 
-            setLoading(false); 
+     // Nuevos estados para los filtros
+    const [filters, setFilters] = useState({
+        status: '',
+        critical_stock: false,
+        item_type: '',
+        unit_of_measure: '',
+        location: ''
+    });
+
+    // Estados para las opciones de los desplegables
+    const [locations, setLocations] = useState([]);
+    const [units, setUnits] = useState([]);
+
+    const fetchSettings = useCallback(async () => {
+        try {
+            const response = await fetch(`${API_URL}/settings/`);
+            if (!response.ok) throw new Error('Error al cargar la configuración.');
+            const settings = await response.json();
+            setLocations(settings.locations || []);
+            setUnits(settings.units_of_measure || []);
+        } catch (err) {
+            console.error(err.message);
         }
     }, []);
-    
-    useEffect(() => { fetchItems(); }, [fetchItems]);
+
+    const fetchItems = useCallback(async () => {
+        try {
+            setLoading(true);
+            const params = new URLSearchParams();
+            if (searchQuery) params.append('search', searchQuery);
+            if (filters.status) params.append('status', filters.status);
+            if (filters.critical_stock) params.append('critical_stock', filters.critical_stock);
+            if (filters.item_type) params.append('item_type', filters.item_type);
+            if (filters.unit_of_measure) params.append('unit_of_measure', filters.unit_of_measure);
+            if (filters.location) params.append('location', filters.location);
+            
+            const response = await fetch(`${API_URL}/items/?${params.toString()}`);
+            if (!response.ok) throw new Error('Error al cargar.');
+            setItems(await response.json());
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [searchQuery, filters]);
+
+    useEffect(() => {
+        fetchSettings();
+        fetchItems();
+    }, [fetchItems, fetchSettings]);
+
+    const handleFilterChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFilters(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
 
     const handleUpdateItem = async (itemData, fieldsToUpdate) => {
         try {
@@ -322,9 +366,9 @@ const ItemsView = () => {
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
 
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                 <div className="flex items-center gap-2 w-full md:w-1/3">
-                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems(searchQuery)} placeholder="Buscar por SKU o Nombre..." className="p-2 border rounded-md w-full" />
-                    <button onClick={() => fetchItems(searchQuery)} className="p-2 bg-blue-600 text-white rounded-md"><Search size={20}/></button>
+                <div className="flex items-center gap-2 w-full md:w-1/3">
+                    <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems()} placeholder="Buscar por SKU o Nombre..." className="p-2 border rounded-md w-full" />
+                    <button onClick={() => fetchItems()} className="p-2 bg-blue-600 text-white rounded-md"><Search size={20}/></button>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={handlePdfExport} className="flex items-center gap-2 p-2 border rounded-md text-sm"><FileDown size={16}/>PDF</button>
@@ -332,6 +376,35 @@ const ItemsView = () => {
                     <button onClick={() => setIsFileModalOpen(true)} className="flex items-center gap-2 p-2 text-sm font-semibold text-white bg-green-600 rounded-md">
                         <Upload size={16}/>Importar Ítems
                     </button>
+                </div>
+            </div>
+            
+            <div className="bg-white p-4 rounded-xl shadow-md mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border rounded-md">
+                        <option value="">Filtrar por Estado</option>
+                        <option value="Activo">Activo</option>
+                        <option value="Inactivo">Inactivo</option>
+                        <option value="Obsoleto">Obsoleto</option>
+                    </select>
+                    <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border rounded-md">
+                        <option value="">Filtrar por Tipo</option>
+                        <option value="Materia Prima">Materia Prima</option>
+                        <option value="Producto Intermedio">Producto Intermedio</option>
+                        <option value="Producto Terminado">Producto Terminado</option>
+                    </select>
+                    <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border rounded-md">
+                        <option value="">Unidad de Medida</option>
+                        {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                    </select>
+                    <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border rounded-md">
+                        <option value="">Ubicación</option>
+                        {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                    </select>
+                    <div className="flex items-center">
+                        <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                        <label htmlFor="critical_stock" className="ml-2 block text-sm text-gray-900">Stock Crítico</label>
+                    </div>
                 </div>
             </div>
 
