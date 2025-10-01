@@ -2321,12 +2321,26 @@ const PMPView = ({ results, setResults }) => {
     );
 };
 
-// --- VISTA PLAN DE REQUERIMIENTO DE MATERIALES (MRP) --- (NUEVO)
+// --- VISTA PLAN DE REQUERIMIENTO DE MATERIALES (MRP) --- (MODIFICADO)
 
 const MRPView = ({ pmpResults }) => {
     const [mrpData, setMrpData] = useState([]);
     const [loadingSku, setLoadingSku] = useState(null);
     const [error, setError] = useState('');
+
+    const getWeekPeriodString = (dateStr) => {
+        try {
+            const date = new Date(dateStr);
+            date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            const weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            return `Semana ${weekNo}, ${d.getUTCFullYear()}`;
+        } catch {
+            return null;
+        }
+    }
 
     const handleCalculateMRP = async (pmp) => {
         setLoadingSku(pmp.id);
@@ -2343,15 +2357,37 @@ const MRPView = ({ pmpResults }) => {
                 throw new Error(errData.detail || `Error al calcular el MRP para ${pmp.sku}`);
             }
             const data = await response.json();
-            
+
+            // --- INICIO: Lógica para procesar datos del gráfico ---
+            const requirementsByPeriod = {};
+            pmp.table.forEach(p => {
+                requirementsByPeriod[p.period] = 0;
+            });
+
+            data.timeline.forEach(item => {
+                const period = getWeekPeriodString(item.order_by_date);
+                if (requirementsByPeriod.hasOwnProperty(period)) {
+                    requirementsByPeriod[period]++;
+                }
+            });
+
+            const chartData = pmp.table.map(pmpPeriod => ({
+                period: pmpPeriod.period.replace('Semana ', 'S').replace(', ', '-'),
+                "Demanda Proyectada": pmpPeriod.gross_requirements,
+                "Órdenes de Compra": requirementsByPeriod[pmpPeriod.period] || 0
+            }));
+            // --- FIN: Lógica para procesar datos del gráfico ---
+
+            const newMrpData = { ...data, pmpId: pmp.id, chartData }; // Añadir chartData al objeto
+
             setMrpData(prev => {
-                const existingIndex = prev.findIndex(item => item.product_sku === data.product_sku);
+                const existingIndex = prev.findIndex(item => item.pmpId === pmp.id);
                 if (existingIndex > -1) {
                     const updatedData = [...prev];
-                    updatedData[existingIndex] = data;
+                    updatedData[existingIndex] = newMrpData;
                     return updatedData;
                 }
-                return [...prev, data];
+                return [...prev, newMrpData];
             });
 
         } catch (err) {
@@ -2399,6 +2435,25 @@ const MRPView = ({ pmpResults }) => {
                      <button onClick={() => handleCloseMrp(mrp.product_sku)} className="absolute top-4 right-4 p-2 text-sm font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600" title="Cerrar Plan">
                         <X size={16}/>
                     </button>
+
+                    {/* --- INICIO: Gráfico Comparativo --- */}
+                    <div className="mb-8">
+                        <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico Comparativo: Demanda vs. Órdenes de Compra</h4>
+                        <ResponsiveContainer width="100%" height={250}>
+                             <ComposedChart data={mrp.chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+                                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                                <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" allowDecimals={false} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar yAxisId="left" dataKey="Demanda Proyectada" barSize={20} fill="#8884d8" />
+                                <Line yAxisId="right" type="monotone" dataKey="Órdenes de Compra" stroke="#82ca9d" strokeWidth={2} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+                    {/* --- FIN: Gráfico Comparativo --- */}
+
                     {mrp.timeline.length === 0 ? (
                         <p className="text-center text-gray-500">No se encontraron requerimientos de materiales para las producciones planificadas.</p>
                     ) : (
