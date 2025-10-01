@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable';
 
 const API_URL = 'http://127.0.0.1:8000';
 
-// --- COMPONENTS --- 
+// --- COMPONENTS ---
 
 const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar...", disabled = false }) => {
     const [query, setQuery] = useState('');
@@ -167,8 +167,10 @@ const ItemModal = ({ item, onClose, onSave }) => {
     }, []);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        const finalValue = name === 'reorder_point' ? parseInt(value, 10) || 0 : value;
+        const { name, value, type } = e.target;
+        // Asegurarse de que los nuevos campos numéricos se guarden como enteros
+        const isNumeric = ['reorder_point', 'lead_time_fabricacion', 'stock_de_seguridad', 'tamano_lote_fijo'].includes(name);
+        const finalValue = isNumeric ? parseInt(value, 10) || 0 : value;
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
@@ -201,20 +203,40 @@ const ItemModal = ({ item, onClose, onSave }) => {
                          <input value={`Estado: ${formData.status}`} disabled className="p-2 border rounded bg-gray-100" />
                     </div>
 
-                    <h3 className="font-semibold text-gray-700 pt-4">Parámetros Editables</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <h3 className="font-semibold text-gray-700 pt-4">Parámetros de Inventario</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm font-medium text-gray-600">Stock Crítico</label>
-                            <input 
-                                type="number" 
-                                name="reorder_point" 
-                                value={formData.reorder_point || ''} 
-                                onChange={handleChange} 
-                                placeholder="Punto de Reorden" 
-                                className="p-2 border rounded w-full mt-1" 
-                            />
+                            <label className="text-sm font-medium text-gray-600">Stock Crítico (Punto de Reorden)</label>
+                            <input type="number" name="reorder_point" value={formData.reorder_point || ''} onChange={handleChange} className="p-2 border rounded w-full mt-1" />
                         </div>
                         <div>
+                            <label className="text-sm font-medium text-gray-600">Stock de Seguridad</label>
+                            <input type="number" name="stock_de_seguridad" value={formData.stock_de_seguridad || ''} onChange={handleChange} className="p-2 border rounded w-full mt-1" />
+                        </div>
+                    </div>
+                    
+                    <h3 className="font-semibold text-gray-700 pt-4">Parámetros de Planificación</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Lead Time Fabricación (días)</label>
+                            <input type="number" name="lead_time_fabricacion" value={formData.lead_time_fabricacion || ''} onChange={handleChange} className="p-2 border rounded w-full mt-1" />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Política de Lote</label>
+                            <select name="politica_lote" value={formData.politica_lote || 'LxL'} onChange={handleChange} className="p-2 border rounded w-full mt-1">
+                                <option value="LxL">Lote por Lote (LxL)</option>
+                                <option value="FOQ">Cantidad Fija (FOQ)</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className="text-sm font-medium text-gray-600">Tamaño de Lote Fijo</label>
+                            <input type="number" name="tamano_lote_fijo" value={formData.tamano_lote_fijo || ''} onChange={handleChange} className="p-2 border rounded w-full mt-1" disabled={formData.politica_lote !== 'FOQ'} />
+                        </div>
+                    </div>
+
+                    <h3 className="font-semibold text-gray-700 pt-4">Otros Parámetros</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
                             <label className="text-sm font-medium text-gray-600">Ubicación</label>
                             <select name="location" value={formData.location || ''} onChange={handleChange} className="p-2 border rounded w-full mt-1">
                                 <option value="">Seleccione...</option>
@@ -427,8 +449,11 @@ const ItemsView = () => {
         setSearchQuery('');
     };
 
-    const handleUpdateItem = async (itemData, fieldsToUpdate) => {
+    const handleUpdateItem = async (itemData) => {
         try {
+            // Quitamos los campos de solo lectura antes de enviar
+            const { sku, name, category, in_stock, item_type, status, ...fieldsToUpdate } = itemData;
+
             const response = await fetch(`${API_URL}/items/${itemData.sku}`, { 
                 method: 'PUT', 
                 headers: { 'Content-Type': 'application/json' }, 
@@ -436,12 +461,24 @@ const ItemsView = () => {
             });
             if (!response.ok) throw new Error((await response.json()).detail || 'Error al guardar.');
             setItemToEdit(null); 
-            fetchItems(searchQuery);
+            fetchItems();
         } catch (err) { alert(`Error: ${err.message}`); }
     };
     
     const handleStatusChange = (item, newStatus) => {
-        handleUpdateItem(item, { status: newStatus });
+        // Creamos un objeto de actualización solo con el estado
+        const updatePayload = { status: newStatus };
+        
+        fetch(`${API_URL}/items/${item.sku}`, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(updatePayload) 
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Error al actualizar estado.');
+            fetchItems(); // Recargar los ítems para reflejar el cambio
+        })
+        .catch(err => alert(`Error: ${err.message}`));
     };
 
     const handleDeleteItem = async (sku) => {
@@ -631,7 +668,7 @@ const ItemsView = () => {
     
     return (
         <div className="p-8">
-            {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={(data) => handleUpdateItem(data, { reorder_point: data.reorder_point, location: data.location, unit_of_measure: data.unit_of_measure })} />}
+            {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={handleUpdateItem} />}
             {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
             {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedCount={selectedItems.length} />}
@@ -1708,28 +1745,28 @@ const PredictionView = ({ results, setResults }) => {
     );
 };
 
-const PMPView = ({ results, setResults }) => {
+const PMPView = ({ pmpResults, setPmpResults }) => {
     const [products, setProducts] = useState([]);
-    const [selectedSku, setSelectedSku] = useState(results?.selectedSku || '');
+    const [selectedSku, setSelectedSku] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await fetch(`${API_URL}/items/`);
-                const allItems = await response.json();
-                const finishedProducts = allItems.filter(item => item.item_type === 'Producto Terminado');
+                const response = await fetch(`${API_URL}/items/?item_type=Producto Terminado`);
+                if (!response.ok) throw new Error('No se pudieron cargar los productos.');
+                const finishedProducts = await response.json();
                 setProducts(finishedProducts);
-                if (finishedProducts.length > 0 && !selectedSku) {
+                if (finishedProducts.length > 0) {
                     setSelectedSku(finishedProducts[0].sku);
                 }
             } catch (err) {
-                setError("No se pudieron cargar los productos.");
+                setError(err.message);
             }
         };
         fetchProducts();
-    }, [selectedSku]);
+    }, []);
 
     const handleGeneratePMP = async () => {
         if (!selectedSku) {
@@ -1740,66 +1777,75 @@ const PMPView = ({ results, setResults }) => {
         setError('');
 
         try {
-            const response = await fetch(`${API_URL}/pmp/initial-data/${selectedSku}`, { method: 'POST' });
-            const data = await response.json();
+            const response = await fetch(`${API_URL}/pmp/calculate/${selectedSku}`, { method: 'POST' });
             if (!response.ok) {
-                throw new Error(data.detail || 'Error al generar el PMP.');
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Error al generar el PMP.');
             }
+            const data = await response.json();
+            const product = products.find(p => p.sku === selectedSku);
             
-            const initialTable = data.demand_forecast.map(period => ({
-                period: period.period,
-                demand: period.total_demand,
-                plannedProduction: 0,
-            }));
+            const newPmp = {
+                id: `${selectedSku}-${Date.now()}`, // ID único para este plan
+                sku: selectedSku,
+                productName: product.name,
+                initialInventory: product.in_stock,
+                table: data.table,
+                // Guardar una copia original para el botón "Restablecer"
+                originalTable: JSON.parse(JSON.stringify(data.table)) 
+            };
             
-            setResults({
-                initialData: data,
-                tableState: initialTable,
-                selectedSku: selectedSku,
-            });
+            setPmpResults(prev => [...prev, newPmp]);
 
         } catch (err) {
             setError(err.message);
-            setResults(null);
         } finally {
             setLoading(false);
         }
     };
-    
-    const handleProductionChange = (index, value) => {
-        setResults(prev => {
-            const newTableState = [...prev.tableState];
-            newTableState[index].plannedProduction = parseInt(value, 10) || 0;
-            return { ...prev, tableState: newTableState };
-        });
+
+    const handleProductionChange = (pmpId, periodIndex, value) => {
+        setPmpResults(prev => prev.map(pmp => {
+            if (pmp.id !== pmpId) return pmp;
+
+            const newTable = [...pmp.table];
+            newTable[periodIndex].planned_production_receipt = parseInt(value, 10) || 0;
+
+            // Recalcular períodos subsecuentes para este PMP
+            for (let i = periodIndex; i < newTable.length; i++) {
+                const prevInventory = i === 0 ? pmp.initialInventory : newTable[i - 1].projected_inventory;
+                
+                newTable[i].initial_inventory = prevInventory;
+                newTable[i].projected_inventory = 
+                    prevInventory + 
+                    newTable[i].planned_production_receipt - 
+                    newTable[i].gross_requirements;
+            }
+            
+            return { ...pmp, table: newTable };
+        }));
+    };
+
+    const handleReset = (pmpId) => {
+        setPmpResults(prev => prev.map(pmp => {
+            if (pmp.id !== pmpId) return pmp;
+            return { ...pmp, table: JSON.parse(JSON.stringify(pmp.originalTable)) };
+        }));
     };
     
-    const calculatedPmp = React.useMemo(() => {
-        if (!results || !results.tableState) return null;
+    const handleClose = (pmpId) => {
+        setPmpResults(prev => prev.filter(pmp => pmp.id !== pmpId));
+    };
 
-        const { initialData, tableState } = results;
-        const calculatedPeriods = [];
-
-        tableState.forEach((period, index) => {
-            const initialInventory = index === 0 ? initialData.initial_inventory : calculatedPeriods[index - 1].projectedInventory;
-            const projectedInventory = initialInventory + period.plannedProduction - period.demand;
-            
-            calculatedPeriods.push({ ...period, initialInventory, projectedInventory });
-        });
-
-        return {
-            headers: calculatedPeriods.map(p => p.period),
-            rows: {
-                'Inventario Inicial': calculatedPeriods.map(p => p.initialInventory),
-                'Pronostico': calculatedPeriods.map(p => p.demand),
-                'Producción Planificada': calculatedPeriods.map(p => p.plannedProduction),
-                'Inventario Proyectado': calculatedPeriods.map(p => p.projectedInventory),
-            }
-        };
-
-    }, [results]);
-
-
+    const Tooltip = ({ text, children }) => (
+        <span className="group relative">
+            {children}
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 text-xs text-white bg-gray-700 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                {text}
+            </span>
+        </span>
+    );
+    
     return (
         <div className="p-8 space-y-8">
             <div className="bg-white p-6 rounded-xl shadow-md">
@@ -1813,55 +1859,100 @@ const PMPView = ({ results, setResults }) => {
                         </select>
                     </div>
                     <button onClick={handleGeneratePMP} disabled={loading || !selectedSku} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
-                        <Calendar size={16}/> {loading ? 'Cargando...' : 'Generar PMP'}
+                        <Calendar size={16}/> {loading ? 'Calculando...' : 'Generar y Añadir PMP'}
                     </button>
                  </div>
                  {error && <p className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-md">{error}</p>}
             </div>
 
-            {results && calculatedPmp && (
-                 <div className="bg-white p-6 rounded-xl shadow-md">
+            {pmpResults.map((pmp) => (
+                 <div key={pmp.id} className="bg-white p-6 rounded-xl shadow-md">
                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Plan Maestro para {results.selectedSku}</h3>
+                        <h3 className="text-lg font-bold text-gray-800">Plan Maestro para: <span className="text-blue-600">{pmp.productName} ({pmp.sku})</span></h3>
+                        <div className="flex items-center gap-2">
+                             <button onClick={() => handleReset(pmp.id)} className="p-2 text-sm font-semibold text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300" title="Restablecer Plan">
+                                <FilterX size={16}/>
+                            </button>
+                            <button onClick={() => handleClose(pmp.id)} className="p-2 text-sm font-semibold text-white bg-red-500 rounded-md hover:bg-red-600" title="Cerrar Plan">
+                                <X size={16}/>
+                            </button>
+                        </div>
                      </div>
+
+                    <div className="mb-8">
+                        <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Demanda vs. Producción</h4>
+                        <ResponsiveContainer width="100%" height={250}>
+                             <ComposedChart data={pmp.table} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="gross_requirements" name="Demanda Pronosticada" barSize={20} fill="#8884d8" />
+                                <Line type="monotone" dataKey="planned_production_receipt" name="Producción Planificada" stroke="#82ca9d" strokeWidth={2} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
+
                      <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left border-collapse">
                              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                  <tr>
                                      <th className="p-3 font-semibold border border-gray-200">Concepto</th>
-                                     {calculatedPmp.headers.map(header => <th key={header} className="p-3 font-semibold border border-gray-200 text-center">{header}</th>)}
+                                     {pmp.table.map(period => <th key={period.period} className="p-3 font-semibold border border-gray-200 text-center">{period.period}</th>)}
                                  </tr>
                              </thead>
                              <tbody>
-                                 {Object.entries(calculatedPmp.rows).map(([rowName, rowData]) => (
-                                     <tr key={rowName} className="border-b">
-                                         <td className="p-3 font-medium border border-gray-200 bg-gray-50">{rowName}</td>
-                                         {rowData.map((cellData, index) => {
-                                            if (rowName === 'Producción Planificada') {
-                                                return (
-                                                    <td key={index} className="p-1 border border-gray-200 text-center bg-yellow-50">
-                                                        <input type="number" value={cellData}
-                                                            onChange={(e) => handleProductionChange(index, e.target.value)}
-                                                            className="w-20 p-2 text-center bg-transparent border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                                                        />
-                                                    </td>
-                                                );
-                                            }
-                                            let cellClass = "p-3 border border-gray-200 text-center";
-                                            if (rowName === 'Inventario Proyectado' && cellData < 0) {
-                                                cellClass += " bg-red-100 text-red-800 font-bold";
-                                            }
-                                            return <td key={index} className={cellClass}>{cellData}</td>
-                                         })}
-                                     </tr>
-                                 ))}
+                                <tr className="border-b">
+                                     <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
+                                         Inventario Proyectado
+                                         <Tooltip text="Inventario esperado al final del período. Se vuelve rojo si es negativo.">
+                                            <HelpCircle size={14} className="text-gray-400 cursor-pointer"/>
+                                         </Tooltip>
+                                     </td>
+                                     {pmp.table.map((period, index) => (
+                                         <td key={index} className={`p-3 border border-gray-200 text-center font-semibold ${period.projected_inventory < 0 ? 'bg-red-100 text-red-800' : ''}`}>
+                                             {period.projected_inventory}
+                                         </td>
+                                     ))}
+                                </tr>
+                                <tr className="border-b">
+                                     <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
+                                         Pronóstico de Demanda
+                                          <Tooltip text="Necesidades brutas según el pronóstico de ventas.">
+                                            <HelpCircle size={14} className="text-gray-400 cursor-pointer"/>
+                                         </Tooltip>
+                                     </td>
+                                     {pmp.table.map((period, index) => <td key={index} className="p-3 border border-gray-200 text-center">{period.gross_requirements}</td>)}
+                                </tr>
+                                <tr className="border-b">
+                                     <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
+                                        Producción Planificada
+                                         <Tooltip text="Cantidad de producción sugerida. Puedes editarla para simular escenarios.">
+                                            <HelpCircle size={14} className="text-gray-400 cursor-pointer"/>
+                                         </Tooltip>
+                                     </td>
+                                     {pmp.table.map((period, index) => {
+                                        const isSuggested = pmp.originalTable && period.planned_production_receipt === pmp.originalTable[index].planned_production_receipt;
+                                        return (
+                                            <td key={index} className={`p-1 border border-gray-200 text-center ${isSuggested ? 'bg-blue-50' : 'bg-yellow-50'}`}>
+                                                <input 
+                                                    type="number" 
+                                                    value={period.planned_production_receipt}
+                                                    onChange={(e) => handleProductionChange(pmp.id, index, e.target.value)}
+                                                    className="w-20 p-2 text-center bg-transparent border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </td>
+                                        );
+                                     })}
+                                </tr>
                              </tbody>
                         </table>
                      </div>
                  </div>
-            )}
+            ))}
         </div>
-    )
+    );
 };
 
 const DashboardView = () => {
@@ -2126,7 +2217,8 @@ const PlaceholderView = ({ title }) => <div className="p-8"><div className="bg-w
 function App() {
   const [activeView, setActiveView] = useState('items');
   const [predictionResults, setPredictionResults] = useState(null);
-  const [pmpResults, setPmpResults] = useState(null);
+  // --- MODIFICACIÓN CLAVE: pmpResults ahora es un array para almacenar múltiples planes ---
+  const [pmpResults, setPmpResults] = useState([]);
 
   const getTitle = (view) => ({'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 'mrp': 'Plan de Requerimiento de Materiales', 'settings': 'Configuración'}[view] || 'Dashboard');
   
@@ -2137,7 +2229,8 @@ function App() {
       case 'bom': return <BOMView />; 
       case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
       case 'settings': return <SettingsView />;
-      case 'pmp': return <PMPView results={pmpResults} setResults={setPmpResults} />;
+      // --- MODIFICACIÓN CLAVE: Pasamos el array de PMPs y su setter a la vista ---
+      case 'pmp': return <PMPView pmpResults={pmpResults} setPmpResults={setPmpResults} />;
       case 'mrp': return <PlaceholderView title={getTitle(activeView)} />;
       default: return <PlaceholderView title={getTitle(activeView)} />;
     }
