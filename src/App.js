@@ -1108,6 +1108,11 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState({ item_type: '' });
     const [selectedBoms, setSelectedBoms] = useState([]);
+    const importInputRef = useRef(null);
+    
+    const [importMessage, setImportMessage] = useState('');
+    const [importError, setImportError] = useState('');
+
 
     const fetchBoms = useCallback(async () => {
         setLoading(true);
@@ -1134,7 +1139,7 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
             await fetch(`${API_URL}/boms/${sku}`, { method: 'DELETE' });
             setBomToDelete(null);
             fetchBoms();
-        } catch(err) { alert(`Error: ${err.message}`); }
+        } catch(err) { setImportError(err.message); }
     };
     
     const handleFilterChange = (e) => {
@@ -1175,11 +1180,49 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
                 setSelectedBoms([]);
                 fetchBoms();
             } catch (err) {
-                alert(`Error al eliminar en masa: ${err.message}`);
+                setImportError(err.message);
             }
         }
     };
     
+    const handleExportClick = () => {
+        window.location.href = `${API_URL}/boms/export/csv`;
+    };
+
+    const handleImportClick = () => {
+        importInputRef.current.click();
+    };
+
+    const handleFileImport = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        setImportMessage('');
+        setImportError('');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_URL}/boms/import/csv`, {
+                method: 'POST',
+                body: formData,
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || 'Error desconocido al importar el archivo.');
+            }
+            setImportMessage(result.message);
+            fetchBoms();
+            setTimeout(() => setImportMessage(''), 5000);
+        } catch (err) {
+            setImportError(err.message);
+        } finally {
+            event.target.value = null;
+        }
+    };
+
+
     return (
         <Card title="Listas de Materiales (BOM)">
             {bomToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el BOM para ${bomToDelete.sku}?`} onConfirm={() => handleDelete(bomToDelete.sku)} onCancel={() => setBomToDelete(null)} />}
@@ -1196,8 +1239,35 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
                     />
                     <button onClick={fetchBoms} className="p-2 bg-indigo-600 text-white rounded-lg"><Search size={20}/></button>
                 </div>
-                <button onClick={onCreateNew} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"><PlusCircle size={16} />Crear BOM</button>
+                <div className="flex items-center gap-2">
+                    <input type="file" ref={importInputRef} onChange={handleFileImport} className="hidden" accept=".csv" />
+                    <button onClick={handleImportClick} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700">
+                        <Upload size={16}/> Importar CSV
+                    </button>
+                    <button onClick={handleExportClick} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+                        <FileDown size={16}/> Exportar CSV
+                    </button>
+                    <button onClick={onCreateNew} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">
+                        <PlusCircle size={16} />Crear BOM
+                    </button>
+                </div>
             </div>
+
+            {importMessage && (
+                <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md" role="alert">
+                    <p className="font-bold">Éxito</p>
+                    <p>{importMessage}</p>
+                </div>
+            )}
+            {importError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-md" role="alert">
+                    <div className="flex justify-between items-center">
+                        <p className="font-bold">Error en la importación</p>
+                        <button onClick={() => setImportError('')}><X size={18} /></button>
+                    </div>
+                    <p className="whitespace-pre-wrap">{importError}</p>
+                </div>
+            )}
             
             <div className="bg-gray-50 p-4 rounded-xl shadow-inner mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -1605,7 +1675,7 @@ const PredictionView = ({ results, setResults }) => {
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState([]);
     
-    const [selectedSku, setSelectedSku] = useState(results?.selectedSku || '');
+    const [selectedSku, setSelectedSku] = useState('');
     const [forecastPeriods, setForecastPeriods] = useState(90);
     const [forecastModel, setForecastModel] = useState('prophet');
 
@@ -1615,16 +1685,21 @@ const PredictionView = ({ results, setResults }) => {
         seasonality_prior_scale: 10.0,
         seasonality_mode: 'additive',
     });
+    
+    // --- NUEVO: Estado para la pestaña activa ---
+    const [activeTabSku, setActiveTabSku] = useState(null);
 
+    // --- MODIFICADO: useEffect para buscar solo productos terminados ---
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await fetch(`${API_URL}/items/`);
-                const allItems = await response.json();
-                const relevantProducts = allItems.filter(item => ['Producto Terminado', 'Producto Intermedio'].includes(item.item_type));
-                setProducts(relevantProducts);
-                if (relevantProducts.length > 0 && !selectedSku) {
-                    setSelectedSku(relevantProducts[0].sku);
+                const response = await fetch(`${API_URL}/items/?item_type=Producto Terminado`);
+                const finishedProducts = await response.json();
+                setProducts(finishedProducts);
+                // La lógica para establecer el valor inicial se mueve aquí
+                if (finishedProducts.length > 0) {
+                    // Usamos una función en setSelectedSku para evitar la dependencia
+                    setSelectedSku(currentSku => currentSku || finishedProducts[0].sku);
                 }
             } catch (error) {
                 console.error("Error fetching products:", error);
@@ -1632,7 +1707,7 @@ const PredictionView = ({ results, setResults }) => {
             }
         };
         fetchProducts();
-    }, [selectedSku]);
+    }, []); // Se ejecuta solo una vez al montar el componente
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
@@ -1677,6 +1752,7 @@ const PredictionView = ({ results, setResults }) => {
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Error al cargar el archivo.');
             setMessage(data.message);
+            setTimeout(() => setMessage(''), 5000);
         } catch (error) {
             setError(`Error: ${error.message}`);
         } finally {
@@ -1689,6 +1765,7 @@ const PredictionView = ({ results, setResults }) => {
         setAdvancedSettings(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
     };
 
+    // --- MODIFICADO: handleGenerateForecast para manejar pestañas ---
     const handleGenerateForecast = async () => {
         if (!selectedSku) { setError('Por favor, selecciona un producto.'); return; }
         setLoading(true);
@@ -1729,22 +1806,54 @@ const PredictionView = ({ results, setResults }) => {
                 }
             }
             
-            setResults({
+            const newForecastResult = {
                 forecastData: combinedData,
                 demandSummary: data.summary,
                 metrics: data.metrics,
                 components: formattedComponents,
-                selectedSku: selectedSku
+                selectedSku: selectedSku,
+                productName: products.find(p => p.sku === selectedSku)?.name || selectedSku,
+            };
+
+            setResults(prevResults => {
+                const existingIndex = prevResults.findIndex(r => r.selectedSku === selectedSku);
+                if (existingIndex > -1) {
+                    const updatedResults = [...prevResults];
+                    updatedResults[existingIndex] = newForecastResult;
+                    return updatedResults;
+                } else {
+                    return [...prevResults, newForecastResult];
+                }
             });
-            setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
+            
+            setActiveTabSku(selectedSku);
+            setMessage(`Pronóstico para ${selectedSku} generado/actualizado exitosamente.`);
+            setTimeout(() => setMessage(''), 5000);
+
         } catch (error) {
             setError(`Error: ${error.message}`);
-            setResults(null);
         } finally {
             setLoading(false);
         }
     };
     
+    // --- NUEVO: Manejador para cerrar una pestaña ---
+    const handleCloseTab = (skuToClose) => {
+        setResults(prev => prev.filter(r => r.selectedSku !== skuToClose));
+        // Si la pestaña cerrada era la activa, selecciona otra o ninguna
+        if (activeTabSku === skuToClose) {
+            const remainingTabs = results.filter(r => r.selectedSku !== skuToClose);
+            setActiveTabSku(remainingTabs.length > 0 ? remainingTabs[0].selectedSku : null);
+        }
+    };
+    
+    // --- NUEVO: Obtiene los datos de la pestaña activa para renderizar ---
+    const activeForecast = useMemo(() => {
+        if (!activeTabSku) return null;
+        return results.find(r => r.selectedSku === activeTabSku);
+    }, [activeTabSku, results]);
+
+
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             const date = new Date(label);
@@ -1798,12 +1907,15 @@ const PredictionView = ({ results, setResults }) => {
             
             <Card title="2. Generar Pronóstico de Demanda">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                     <div>
+                     <div className="col-span-1 md:col-span-3 lg:col-span-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Producto</label>
-                        <select value={selectedSku} onChange={(e) => setSelectedSku(e.target.value)} className="p-2 border rounded-lg w-full">
-                            <option value="">Selecciona un producto...</option>
-                            {products.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
-                        </select>
+                        {/* --- MODIFICADO: Se usa SearchableSelect --- */}
+                        <SearchableSelect
+                            options={products}
+                            value={selectedSku}
+                            onChange={setSelectedSku}
+                            placeholder="Buscar y seleccionar producto..."
+                        />
                      </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Pronóstico</label>
@@ -1855,90 +1967,122 @@ const PredictionView = ({ results, setResults }) => {
                 </div>
 
                 <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-green-600 rounded-lg disabled:bg-gray-400 hover:bg-green-700">
-                    <LineChartIcon size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
+                    <LineChartIcon size={16}/> {loading ? 'Generando...' : 'Generar o Actualizar Pronóstico'}
                 </button>
             </Card>
-            
-            {results && results.forecastData && (
-                <Card title={`Resultados del Pronóstico para ${results.selectedSku}`}>
-                    <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-lg font-bold text-gray-800">Gráfico de Tendencia</h3>
-                        {results.metrics && (
-                            <div className="text-xs text-right text-gray-600 bg-gray-50 p-2 rounded-lg border">
-                                <p><strong>Métricas del Modelo:</strong></p>
-                                <p>Error Absoluto Medio (MAE): <strong>{results.metrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
-                                <p>Raíz del Error Cuadrático Medio (RMSE): <strong>{results.metrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
-                            </div>
-                        )}
-                    </div>
-                    <ResponsiveContainer width="100%" height={400}>
-                         <ComposedChart data={results.forecastData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} />
-                            <YAxis />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                            <Area type="monotone" dataKey="historico" name="Ventas Históricas" stroke="#1d4ed8" fill="#3b82f6" fillOpacity={0.6} />
-                            <Line type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" dot={false}/>
-                            <Area type="monotone" dataKey="max" name="Intervalo de Confianza" stroke="none" fill="#e5e7eb" fillOpacity={0.5} data={results.forecastData.filter(d => d.max !== undefined)} />
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                </Card>
+
+             {/* --- NUEVO: Contenedor y renderizado de pestañas --- */}
+            {results.length > 0 && (
+                 <div className="flex flex-wrap items-center gap-2 border-b-2 border-gray-200 pb-2">
+                    {results.map(forecast => (
+                        <button
+                            key={forecast.selectedSku}
+                            onClick={() => setActiveTabSku(forecast.selectedSku)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-semibold transition-colors ${
+                                activeTabSku === forecast.selectedSku
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            }`}
+                        >
+                            {forecast.productName}
+                             <X 
+                                size={16} 
+                                className={`p-1 rounded-full ml-1 ${
+                                    activeTabSku === forecast.selectedSku ? 'hover:bg-indigo-700' : 'hover:bg-gray-400'
+                                }`}
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Evita que se active el onClick del botón principal
+                                    handleCloseTab(forecast.selectedSku);
+                                }} 
+                            />
+                        </button>
+                    ))}
+                </div>
             )}
             
-            {results && results.components && (
-                <Card title="Componentes del Pronóstico">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {results.components.trend && (
-                            <div>
-                                <h4 className="font-semibold text-center mb-2">Tendencia</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={results.components.trend}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} /><YAxis domain={['dataMin', 'dataMax']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Tendencia" stroke="#8884d8" dot={false} /></LineChart>
-                                </ResponsiveContainer>
+            {/* --- MODIFICADO: Renderizado condicional del contenido de la pestaña activa --- */}
+            {activeForecast && (
+                <div key={activeForecast.selectedSku} className="space-y-8 animate-fadeIn">
+                    <Card title={`Resultados del Pronóstico para ${activeForecast.productName}`}>
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-lg font-bold text-gray-800">Gráfico de Tendencia</h3>
+                            {activeForecast.metrics && (
+                                <div className="text-xs text-right text-gray-600 bg-gray-50 p-2 rounded-lg border">
+                                    <p><strong>Métricas del Modelo:</strong></p>
+                                    <p>Error Absoluto Medio (MAE): <strong>{activeForecast.metrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
+                                    <p>Raíz del Error Cuadrático Medio (RMSE): <strong>{activeForecast.metrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
+                                </div>
+                            )}
+                        </div>
+                        <ResponsiveContainer width="100%" height={400}>
+                            <ComposedChart data={activeForecast.forecastData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} />
+                                <YAxis />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend />
+                                <Area type="monotone" dataKey="historico" name="Ventas Históricas" stroke="#1d4ed8" fill="#3b82f6" fillOpacity={0.6} />
+                                <Line type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" dot={false}/>
+                                <Area type="monotone" dataKey="max" name="Intervalo de Confianza" stroke="none" fill="#e5e7eb" fillOpacity={0.5} data={activeForecast.forecastData.filter(d => d.max !== undefined)} />
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </Card>
+                    
+                    {activeForecast.components && (
+                        <Card title="Componentes del Pronóstico">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {activeForecast.components.trend && (
+                                    <div>
+                                        <h4 className="font-semibold text-center mb-2">Tendencia</h4>
+                                        <ResponsiveContainer width="100%" height={200}>
+                                            <LineChart data={activeForecast.components.trend}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} /><YAxis domain={['dataMin', 'dataMax']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Tendencia" stroke="#8884d8" dot={false} /></LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+                                {activeForecast.components.weekly && (
+                                    <div>
+                                        <h4 className="font-semibold text-center mb-2">Estacionalidad Semanal</h4>
+                                        <ResponsiveContainer width="100%" height={200}>
+                                            <LineChart data={activeForecast.components.weekly.slice(0, 7)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { weekday: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Semanal" stroke="#82ca9d" dot={false} /></LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+                                {activeForecast.components.yearly && (
+                                    <div>
+                                        <h4 className="font-semibold text-center mb-2">Estacionalidad Anual</h4>
+                                        <ResponsiveContainer width="100%" height={200}>
+                                            <LineChart data={activeForecast.components.yearly}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Anual" stroke="#ffc658" dot={false} /></LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        {results.components.weekly && (
-                             <div>
-                                <h4 className="font-semibold text-center mb-2">Estacionalidad Semanal</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={results.components.weekly.slice(0, 7)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { weekday: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Semanal" stroke="#82ca9d" dot={false} /></LineChart>
-                                </ResponsiveContainer>
+                        </Card>
+                    )}
+                    
+                    {activeForecast.demandSummary && (
+                        <Card title={`Resumen de Demanda Semanal para ${activeForecast.productName}`}>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th className="p-3">Periodo</th><th className="p-3">Fecha de Inicio</th><th className="p-3">Fecha de Fin</th><th className="p-3 text-right">Demanda Pronosticada</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {activeForecast.demandSummary.map((summaryItem) => (
+                                            <tr key={summaryItem.period} className="border-b hover:bg-gray-50">
+                                                <td className="p-3 font-medium">{summaryItem.period}</td>
+                                                <td className="p-3">{formatDate(summaryItem.start_date)}</td>
+                                                <td className="p-3">{formatDate(summaryItem.end_date)}</td>
+                                                <td className="p-3 text-right font-semibold">{summaryItem.total_demand.toLocaleString()} unidades</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                        )}
-                         {results.components.yearly && (
-                             <div>
-                                <h4 className="font-semibold text-center mb-2">Estacionalidad Anual</h4>
-                                <ResponsiveContainer width="100%" height={200}>
-                                    <LineChart data={results.components.yearly}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Anual" stroke="#ffc658" dot={false} /></LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-                    </div>
-                </Card>
-            )}
-            
-            {results && results.demandSummary && (
-                <Card title={`Resumen de Demanda Semanal para ${results.selectedSku}`}>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr>
-                                    <th className="p-3">Periodo</th><th className="p-3">Fecha de Inicio</th><th className="p-3">Fecha de Fin</th><th className="p-3 text-right">Demanda Pronosticada</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {results.demandSummary.map((summaryItem) => (
-                                    <tr key={summaryItem.period} className="border-b hover:bg-gray-50">
-                                        <td className="p-3 font-medium">{summaryItem.period}</td>
-                                        <td className="p-3">{formatDate(summaryItem.start_date)}</td>
-                                        <td className="p-3">{formatDate(summaryItem.end_date)}</td>
-                                        <td className="p-3 text-right font-semibold">{summaryItem.total_demand.toLocaleString()} unidades</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
+                        </Card>
+                    )}
+                </div>
             )}
         </div>
     );
@@ -2226,8 +2370,9 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
     const [showHome, setShowHome] = useState(true);
-    const [predictionResults, setPredictionResults] = useState(null);
-    const [pmpResults, setPmpResults] = useState([]); // Clave: PMP ahora es un array.
+    // --- MODIFICADO: El estado de predicción ahora es un array para las pestañas ---
+    const [predictionResults, setPredictionResults] = useState([]);
+    const [pmpResults, setPmpResults] = useState([]);
 
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
