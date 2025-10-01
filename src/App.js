@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle } from 'lucide-react';
 import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
@@ -42,11 +42,9 @@ const Header = ({ title }) => (
 
 const ItemModal = ({ item, onClose, onSave }) => { 
     const [formData, setFormData] = useState(item);
-    // NUEVO: Estados para las opciones de los desplegables
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([]);
 
-    // NUEVO: useEffect para cargar las opciones desde la configuración
     useEffect(() => {
         const fetchSettings = async () => {
             try {
@@ -63,7 +61,6 @@ const ItemModal = ({ item, onClose, onSave }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        // Convertir el stock crítico a número
         const finalValue = name === 'reorder_point' ? parseInt(value, 10) || 0 : value;
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
@@ -73,7 +70,7 @@ const ItemModal = ({ item, onClose, onSave }) => {
         onSave(formData);
     };
 
-    if (!item) return null; // No renderizar nada si no hay un ítem para editar
+    if (!item) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
@@ -83,7 +80,6 @@ const ItemModal = ({ item, onClose, onSave }) => {
                     <button onClick={onClose}><X size={24} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-4">
-                    {/* --- Campos deshabilitados (solo visualización) --- */}
                     <h3 className="font-semibold text-gray-700">Información del Ítem (Solo lectura)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input value={`SKU: ${formData.sku}`} disabled className="p-2 border rounded bg-gray-100" />
@@ -98,7 +94,6 @@ const ItemModal = ({ item, onClose, onSave }) => {
                          <input value={`Estado: ${formData.status}`} disabled className="p-2 border rounded bg-gray-100" />
                     </div>
 
-                    {/* --- Campos editables --- */}
                     <h3 className="font-semibold text-gray-700 pt-4">Parámetros Editables</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -139,6 +134,128 @@ const ItemModal = ({ item, onClose, onSave }) => {
 
 const ConfirmationModal = ({ message, onConfirm, onCancel }) => (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"><div className="bg-white rounded-lg shadow-xl p-8"><p className="text-lg mb-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onCancel} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button><button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded">Confirmar</button></div></div></div>);
 
+// --- MODIFICADO: Modal para edición en grupo ---
+const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
+    const [fieldsToUpdate, setFieldsToUpdate] = useState({
+        reorder_point: '',
+        location: '',
+        unit_of_measure: ''
+    });
+    const [locations, setLocations] = useState([]);
+    const [units, setUnits] = useState([]);
+    const [isSaving, setIsSaving] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const response = await fetch(`${API_URL}/settings/`);
+                const settings = await response.json();
+                setLocations(settings.locations || []);
+                setUnits(settings.units_of_measure || []);
+            } catch (error) {
+                console.error("Error cargando la configuración:", error);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFieldsToUpdate(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async () => {
+        const updates = Object.entries(fieldsToUpdate).reduce((acc, [key, value]) => {
+            if (value !== '') {
+                acc[key] = key === 'reorder_point' ? parseInt(value, 10) : value;
+            }
+            return acc;
+        }, {});
+
+        if (Object.keys(updates).length === 0) {
+            alert("No se ha modificado ningún campo.");
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await onSave(updates);
+            setSuccessMessage('¡Ítems actualizados exitosamente!');
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        } catch (error) {
+            // Error is already handled in the parent component
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-lg">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Editar {selectedCount} Ítems</h2>
+                    <button onClick={onClose} disabled={isSaving || successMessage}><X size={24} /></button>
+                </div>
+                {successMessage ? (
+                    <div className="text-center p-4">
+                        <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+                        <p className="mt-4 text-lg font-medium text-gray-700">{successMessage}</p>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <p className="text-sm text-gray-600">
+                            Completa solo los campos que deseas actualizar para todos los ítems seleccionados. Los campos vacíos no se modificarán.
+                        </p>
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Stock Crítico (Punto de Reorden)</label>
+                            <input
+                                type="number"
+                                name="reorder_point"
+                                value={fieldsToUpdate.reorder_point}
+                                onChange={handleChange}
+                                placeholder="Dejar vacío para no cambiar"
+                                className="p-2 border rounded w-full mt-1"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Ubicación</label>
+                            <select name="location" value={fieldsToUpdate.location} onChange={handleChange} className="p-2 border rounded w-full mt-1">
+                                <option value="">Dejar sin cambiar</option>
+                                {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-600">Unidad de Medida</label>
+                            <select name="unit_of_measure" value={fieldsToUpdate.unit_of_measure} onChange={handleChange} className="p-2 border rounded w-full mt-1">
+                                <option value="">Dejar sin cambiar</option>
+                                {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-4 pt-6">
+                            <button type="button" onClick={onClose} disabled={isSaving} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
+                            <button type="button" onClick={handleSubmit} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-400">
+                                {isSaving ? 'Guardando...' : `Aplicar a ${selectedCount} ítems`}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+const initialFilters = {
+    status: '',
+    critical_stock: false,
+    item_type: '',
+    unit_of_measure: '',
+    location: ''
+};
+
 const ItemsView = () => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -147,22 +264,20 @@ const ItemsView = () => {
     const [itemToEdit, setItemToEdit] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
     const [isFileModalOpen, setIsFileModalOpen] = useState(false);
-    
+    const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+
     // Estado para manejar la selección múltiple
     const [selectedItems, setSelectedItems] = useState([]);
 
-     // Nuevos estados para los filtros
-    const [filters, setFilters] = useState({
-        status: '',
-        critical_stock: false,
-        item_type: '',
-        unit_of_measure: '',
-        location: ''
-    });
+    // Nuevos estados para los filtros
+    const [filters, setFilters] = useState(initialFilters);
 
     // Estados para las opciones de los desplegables
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([]);
+    
+    // --- NUEVO: Estado para el ordenamiento de la tabla ---
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -209,6 +324,11 @@ const ItemsView = () => {
             [name]: type === 'checkbox' ? checked : value
         }));
     };
+    
+    const clearFilters = () => {
+        setFilters(initialFilters);
+        setSearchQuery('');
+    };
 
     const handleUpdateItem = async (itemData, fieldsToUpdate) => {
         try {
@@ -223,6 +343,7 @@ const ItemsView = () => {
         } catch (err) { alert(`Error: ${err.message}`); }
     };
     
+    // MODIFICADO: Restaurada la función original para manejar el cambio de estado individual
     const handleStatusChange = (item, newStatus) => {
         handleUpdateItem(item, { status: newStatus });
     };
@@ -235,8 +356,6 @@ const ItemsView = () => {
             fetchItems(searchQuery);
         } catch(err) { alert(`Error: ${err.message}`); }
     };
-
-    // --- Lógica de Selección Múltiple y Acciones Masivas ---
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
@@ -282,8 +401,73 @@ const ItemsView = () => {
         }
     };
 
-    // --- Lógica de Exportación ---
-    
+    // MODIFICADO: Lógica para edición en grupo sin la alerta del navegador
+    const handleBulkEdit = async (fieldsToUpdate) => {
+        try {
+            const updatePromises = selectedItems.map(sku =>
+                fetch(`${API_URL}/items/${sku}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fieldsToUpdate),
+                }).then(res => {
+                    if (!res.ok) {
+                        // Throw an error for this specific SKU to be caught by Promise.all
+                        return res.json().then(err => Promise.reject({ sku, detail: err.detail }));
+                    }
+                    return res.json();
+                })
+            );
+            
+            await Promise.all(updatePromises);
+
+            // If we get here, all were successful
+            setIsBulkEditModalOpen(false);
+            setSelectedItems([]);
+            fetchItems();
+        } catch (err) {
+            alert(`Error en la edición masiva: ${err.message || `Falló la actualización para ${err.sku}`}`);
+            // Re-throw to be caught by the modal's logic if needed, or handle error display here
+            throw err;
+        }
+    };
+
+
+    const sortedItems = useMemo(() => {
+        let sortableItems = [...items];
+        if (sortConfig.key !== null) {
+            sortableItems.sort((a, b) => {
+                const valA = a[sortConfig.key] || '';
+                const valB = b[sortConfig.key] || '';
+                if (valA < valB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+        return sortableItems;
+    }, [items, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const SortableHeader = ({ children, sortKey }) => (
+        <th className="p-3 cursor-pointer hover:bg-gray-100" onClick={() => requestSort(sortKey)}>
+            <div className="flex items-center gap-1">
+                {children}
+                <ArrowUpDown size={14} className={sortConfig.key === sortKey ? 'text-gray-800' : 'text-gray-300'} />
+            </div>
+        </th>
+    );
+
+
     const exportHeaders = [
         { label: "SKU", key: "sku" },
         { label: "Nombre", key: "name" },
@@ -304,7 +488,6 @@ const ItemsView = () => {
         doc.save('inventario.pdf');
     };
 
-    // --- Componente del Modal de Carga ---
     const FileUploadModal = ({ onClose }) => {
         const [file, setFile] = useState(null);
         const [message, setMessage] = useState('');
@@ -364,6 +547,8 @@ const ItemsView = () => {
             {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={(data) => handleUpdateItem(data, { reorder_point: data.reorder_point, location: data.location, unit_of_measure: data.unit_of_measure })} />}
             {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
+            {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedCount={selectedItems.length} />}
+
 
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <div className="flex items-center gap-2 w-full md:w-1/3">
@@ -380,7 +565,7 @@ const ItemsView = () => {
             </div>
             
             <div className="bg-white p-4 rounded-xl shadow-md mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
                     <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border rounded-md">
                         <option value="">Filtrar por Estado</option>
                         <option value="Activo">Activo</option>
@@ -405,6 +590,9 @@ const ItemsView = () => {
                         <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
                         <label htmlFor="critical_stock" className="ml-2 block text-sm text-gray-900">Stock Crítico</label>
                     </div>
+                     <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md">
+                        <FilterX size={16}/>Limpiar Filtros
+                    </button>
                 </div>
             </div>
 
@@ -412,9 +600,11 @@ const ItemsView = () => {
                 <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-md mb-6 flex justify-between items-center">
                     <span className="font-semibold">{selectedItems.length} ítem(s) seleccionado(s)</span>
                     <div className="flex items-center gap-4">
+                        <button onClick={() => setIsBulkEditModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm text-blue-800 bg-blue-200 rounded-md font-semibold"><Edit size={14}/>Editar Seleccionados</button>
+                        <div className="border-l h-6 border-blue-300"></div>
                         <span className="text-sm">Cambiar estado a:</span>
                         <button onClick={() => handleBulkStatusChange('Activo')} className="px-2 py-1 text-xs bg-green-500 text-white rounded">Activo</button>
-                        <button onClick={() => handleBulkStatusChange('Inactivo')} className="px-2 py-1 text-xs bg-red-500 text-white rounded">Inactivo</button>
+                        <button onClick={() => handleBulkStatusChange('Inactivo')} className="px-2 py-1 text-xs bg-yellow-500 text-white rounded">Inactivo</button>
                         <button onClick={() => handleBulkStatusChange('Obsoleto')} className="px-2 py-1 text-xs bg-gray-500 text-white rounded">Obsoleto</button>
                         <div className="border-l h-6 border-blue-300"></div>
                         <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 bg-red-100 rounded-md font-semibold"><Trash2 size={14}/>Eliminar Seleccionados</button>
@@ -426,19 +616,24 @@ const ItemsView = () => {
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                         <tr>
-                            <th className="p-3 w-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedItems.length > 0 && selectedItems.length === items.length} /></th>
-                            <th className="p-3">SKU</th><th className="p-3">Nombre</th><th className="p-3">Tipo de Prod.</th><th className="p-3">En Stock</th>
-                            <th className="p-3">Ubicación</th><th className="p-3">Estado</th><th className="p-3">Acciones</th>
+                            <th className="p-3 w-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedItems.length > 0 && selectedItems.length === items.length && items.length > 0} /></th>
+                            <th className="p-3">SKU</th>
+                            <th className="p-3">Nombre</th>
+                            <SortableHeader sortKey="item_type">Tipo de Prod.</SortableHeader>
+                            <SortableHeader sortKey="unit_of_measure">En Stock</SortableHeader>
+                            <SortableHeader sortKey="location">Ubicación</SortableHeader>
+                            <SortableHeader sortKey="status">Estado</SortableHeader>
+                            <th className="p-3">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (<tr><td colSpan="8" className="text-center p-4">Cargando...</td></tr>) 
                         : error ? (<tr><td colSpan="8" className="text-center text-red-500 p-4">{error}</td></tr>) 
-                        : (items.map(item => {
+                        : (sortedItems.map(item => {
                             const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
                             const statusStyles = {
                                 'Activo': 'bg-green-100 text-green-800',
-                                'Inactivo': 'bg-red-100 text-red-800',
+                                'Inactivo': 'bg-yellow-100 text-yellow-800',
                                 'Obsoleto': 'bg-gray-100 text-gray-800',                               
                             };
                             return (
@@ -446,10 +641,10 @@ const ItemsView = () => {
                                 <td className="p-3"><input type="checkbox" checked={selectedItems.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} /></td>
                                 <td className="p-3 font-medium text-gray-900">{item.sku}</td><td className="p-3">{item.name}</td>
                                 <td className="p-3 text-gray-500">{item.item_type}</td>
-                                <td className={`p-3 font-semibold ${needsReorder ? 'text-yellow-800' : 'text-gray-800'}`}>{item.in_stock} {item.unit_of_measure}</td>
+                                <td className={`p-3 font-semibold ${needsReorder ? 'text-red-600' : 'text-gray-800'}`}>{item.in_stock} {item.unit_of_measure}</td>
                                 <td className="p-3">{item.location ?? 'N/A'}</td>
                                 <td className="p-3 overflow-visible">
-                                    <select 
+                                     <select 
                                         value={item.status} 
                                         onChange={(e) => handleStatusChange(item, e.target.value)}
                                         className={`px-3 py-1 text-xs font-semibold rounded-full w-28 text-center border-none appearance-none cursor-pointer ${statusStyles[item.status] || 'bg-gray-100'}`}
@@ -1462,4 +1657,3 @@ function App() {
   );
 }
 export default App;
-
