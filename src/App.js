@@ -283,7 +283,7 @@ const ItemModal = ({ item, onClose, onSave }) => {
 
     const handleChange = (e) => {
         const { name, value, type } = e.target;
-        const isNumeric = ['reorder_point', 'lead_time_fabricacion', 'stock_de_seguridad', 'tamano_lote_fijo'].includes(name);
+        const isNumeric = ['reorder_point', 'lead_time_compra', 'lead_time_fabricacion', 'stock_de_seguridad', 'tamano_lote_fijo'].includes(name);
         const finalValue = isNumeric ? parseInt(value, 10) || 0 : value;
         setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
@@ -333,10 +333,18 @@ const ItemModal = ({ item, onClose, onSave }) => {
                     <div>
                         <h3 className="font-semibold text-indigo-600 mb-3">Parámetros de Planificación</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Lead Time Fabricación (días)</label>
-                                <input type="number" name="lead_time_fabricacion" value={formData.lead_time_fabricacion || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
-                            </div>
+                            {formData.item_type === 'Materia Prima' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Lead Time de Compra (días)</label>
+                                    <input type="number" name="lead_time_compra" value={formData.lead_time_compra || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
+                                </div>
+                            )}
+                            {['Producto Intermedio', 'Producto Terminado'].includes(formData.item_type) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Lead Time Fabricación (días)</label>
+                                    <input type="number" name="lead_time_fabricacion" value={formData.lead_time_fabricacion || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Política de Lote</label>
                                 <select name="politica_lote" value={formData.politica_lote || 'LxL'} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1">
@@ -380,17 +388,28 @@ const ItemModal = ({ item, onClose, onSave }) => {
     );
 };
 
-const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
+const BulkEditModal = ({ onClose, onSave, selectedItems }) => {
     const [fieldsToUpdate, setFieldsToUpdate] = useState({
         reorder_point: '',
         location: '',
-        unit_of_measure: ''
+        unit_of_measure: '',
+        lead_time_compra: '',
+        lead_time_fabricacion: '',
     });
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
+    const showLeadTimeCompra = useMemo(() => 
+        selectedItems.some(item => item.item_type === 'Materia Prima'), 
+        [selectedItems]
+    );
+    const showLeadTimeFabricacion = useMemo(() => 
+        selectedItems.some(item => ['Producto Intermedio', 'Producto Terminado'].includes(item.item_type)), 
+        [selectedItems]
+    );
+    
     useEffect(() => {
         const fetchSettings = async () => {
             try {
@@ -413,7 +432,8 @@ const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
     const handleSubmit = async () => {
         const updates = Object.entries(fieldsToUpdate).reduce((acc, [key, value]) => {
             if (value !== '') {
-                acc[key] = key === 'reorder_point' ? parseInt(value, 10) : value;
+                const isNumeric = ['reorder_point', 'lead_time_compra', 'lead_time_fabricacion'].includes(key);
+                acc[key] = isNumeric ? parseInt(value, 10) : value;
             }
             return acc;
         }, {});
@@ -441,7 +461,7 @@ const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Editar {selectedCount} Ítems</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">Editar {selectedItems.length} Ítems</h2>
                     <button onClick={onClose} disabled={isSaving || successMessage}><X size={24} className="text-gray-500 hover:text-red-500"/></button>
                 </div>
                 {successMessage ? (
@@ -454,16 +474,12 @@ const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
                         <p className="text-sm text-gray-600 mb-4">
                             Completa solo los campos que deseas actualizar para todos los ítems seleccionados. Los campos vacíos no se modificarán.
                         </p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Stock Crítico (Punto de Reorden)</label>
+                                <label className="block text-sm font-medium text-gray-700">Stock Crítico</label>
                                 <input
-                                    type="number"
-                                    name="reorder_point"
-                                    value={fieldsToUpdate.reorder_point}
-                                    onChange={handleChange}
-                                    placeholder="No cambiar"
-                                    className="p-2 border border-gray-300 rounded-lg w-full mt-1"
+                                    type="number" name="reorder_point" value={fieldsToUpdate.reorder_point} onChange={handleChange}
+                                    placeholder="No cambiar" className="p-2 border border-gray-300 rounded-lg w-full mt-1"
                                 />
                             </div>
                             <div>
@@ -480,11 +496,29 @@ const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
                                     {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
                                 </select>
                             </div>
+                            {showLeadTimeCompra && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Lead Time Compra</label>
+                                    <input
+                                        type="number" name="lead_time_compra" value={fieldsToUpdate.lead_time_compra} onChange={handleChange}
+                                        placeholder="No cambiar" className="p-2 border border-gray-300 rounded-lg w-full mt-1"
+                                    />
+                                </div>
+                            )}
+                            {showLeadTimeFabricacion && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Lead Time Fabricación</label>
+                                    <input
+                                        type="number" name="lead_time_fabricacion" value={fieldsToUpdate.lead_time_fabricacion} onChange={handleChange}
+                                        placeholder="No cambiar" className="p-2 border border-gray-300 rounded-lg w-full mt-1"
+                                    />
+                                </div>
+                            )}
                         </div>
                         <div className="flex justify-end gap-4 pt-6">
                             <button type="button" onClick={onClose} disabled={isSaving} className="px-6 py-2 bg-gray-300 text-gray-800 font-semibold rounded-lg hover:bg-gray-400 transition-colors">Cancelar</button>
                             <button type="button" onClick={handleSubmit} disabled={isSaving} className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg disabled:bg-gray-400 hover:bg-indigo-700">
-                                {isSaving ? 'Guardando...' : `Aplicar a ${selectedCount} ítems`}
+                                {isSaving ? 'Guardando...' : `Aplicar a ${selectedItems.length} ítems`}
                             </button>
                         </div>
                     </div>
@@ -493,6 +527,7 @@ const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
         </div>
     );
 };
+
 
 const FileUploadModal = ({ onClose, fetchItems }) => {
     const [file, setFile] = useState(null);
@@ -541,7 +576,11 @@ const FileUploadModal = ({ onClose, fetchItems }) => {
                     <button onClick={onClose}><X size={24} className="text-gray-500 hover:text-red-500"/></button>
                 </div>
                 <div className="space-y-4">
-                    <p className="text-sm text-gray-600">Sube un archivo CSV con las columnas: sku, name, category, in_stock, item_type.</p>
+                    {/* --- MODIFICADO: Actualizar texto de ayuda para importación --- */}
+                    <p className="text-sm text-gray-600">
+                        Sube un archivo CSV con las columnas requeridas: sku, name, category, in_stock, item_type.
+                        Opcionalmente, incluye 'Lead Time de Compra' y/o 'Lead Time de Fabricación'.
+                    </p>
                     <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"/>
                     <button onClick={handleFileUpload} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-400 hover:bg-indigo-700">
                         <Upload size={16}/> {loading ? 'Cargando...' : 'Cargar Archivo'}
@@ -704,11 +743,14 @@ const ItemsView = () => {
     const [itemToDelete, setItemToDelete] = useState(null);
     const [isFileModalOpen, setIsFileModalOpen] = useState(false);
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
-    const [selectedItems, setSelectedItems] = useState([]);
+    const [selectedSkus, setSelectedSkus] = useState([]);
     const [filters, setFilters] = useState(initialFilters);
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    // --- MODIFICADO: Estado para el modal de confirmación de eliminación masiva ---
+    const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -737,7 +779,7 @@ const ItemsView = () => {
             if (!response.ok) throw new Error('Error al cargar.');
             const data = await response.json();
             setItems(data);
-            setSelectedItems(prev => prev.filter(sku => data.some(item => item.sku === sku)));
+            setSelectedSkus(prev => prev.filter(sku => data.some(item => item.sku === sku)));
         } catch (err) {
             setError(err.message);
         } finally {
@@ -765,7 +807,6 @@ const ItemsView = () => {
 
     const handleUpdateItem = async (itemData) => {
         try {
-            // Quitamos los campos de solo lectura antes de enviar
             const { sku, name, category, in_stock, item_type, status, ...fieldsToUpdate } = itemData;
 
             const response = await fetch(`${API_URL}/items/${itemData.sku}`, { 
@@ -799,38 +840,43 @@ const ItemsView = () => {
             const response = await fetch(`${API_URL}/items/${sku}`, { method: 'DELETE' });
             if (!response.ok && response.status !== 204) throw new Error('Error al eliminar.');
             setItemToDelete(null); 
-            setSelectedItems(prev => prev.filter(id => id !== sku));
+            setSelectedSkus(prev => prev.filter(id => id !== sku));
             fetchItems();
         } catch(err) { alert(`Error: ${err.message}`); }
     };
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedItems(items.map(item => item.sku));
+            setSelectedSkus(items.map(item => item.sku));
         } else {
-            setSelectedItems([]);
+            setSelectedSkus([]);
         }
     };
 
     const handleSelectItem = (sku) => {
-        setSelectedItems(prev => 
+        setSelectedSkus(prev => 
             prev.includes(sku) ? prev.filter(id => id !== sku) : [...prev, sku]
         );
     };
     
-    const handleBulkDelete = async () => {
-        if (window.confirm(`¿Seguro que quieres eliminar ${selectedItems.length} ítems seleccionados?`)) {
-            try {
-                await fetch(`${API_URL}/items/bulk-delete`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ skus: selectedItems })
-                });
-                setSelectedItems([]);
-                fetchItems();
-            } catch (err) {
-                alert(`Error al eliminar en masa: ${err.message}`);
-            }
+    // --- MODIFICADO: Separar la lógica de confirmación y ejecución de la eliminación masiva ---
+    const handleBulkDelete = () => {
+        setIsBulkDeleteConfirmOpen(true);
+    };
+
+    const executeBulkDelete = async () => {
+        try {
+            await fetch(`${API_URL}/items/bulk-delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skus: selectedSkus })
+            });
+            setSelectedSkus([]);
+            fetchItems();
+        } catch (err) {
+            alert(`Error al eliminar en masa: ${err.message}`);
+        } finally {
+            setIsBulkDeleteConfirmOpen(false);
         }
     };
     
@@ -839,9 +885,9 @@ const ItemsView = () => {
             await fetch(`${API_URL}/items/bulk-update-status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ skus: selectedItems, status: status })
+                body: JSON.stringify({ skus: selectedSkus, status: status })
             });
-            setSelectedItems([]);
+            setSelectedSkus([]);
             fetchItems();
         } catch (err) {
             alert(`Error al actualizar estado en masa: ${err.message}`);
@@ -850,7 +896,7 @@ const ItemsView = () => {
 
     const handleBulkEdit = async (fieldsToUpdate) => {
         try {
-            const updatePromises = selectedItems.map(sku =>
+            const updatePromises = selectedSkus.map(sku =>
                 fetch(`${API_URL}/items/${sku}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -865,13 +911,18 @@ const ItemsView = () => {
             
             await Promise.all(updatePromises);
             setIsBulkEditModalOpen(false);
-            setSelectedItems([]);
+            setSelectedSkus([]);
             fetchItems();
         } catch (err) {
             alert(`Error en la edición masiva: ${err.message || 'Falló la actualización para ' + err.sku}`);
             throw err;
         }
     };
+    
+    const selectedItemsObjects = useMemo(() => 
+        items.filter(item => selectedSkus.includes(item.sku)),
+        [items, selectedSkus]
+    );
 
     const sortedItems = useMemo(() => {
         let sortableItems = [...items];
@@ -879,12 +930,8 @@ const ItemsView = () => {
             sortableItems.sort((a, b) => {
                 const valA = a[sortConfig.key] || '';
                 const valB = b[sortConfig.key] || '';
-                if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
+                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
                 return 0;
             });
         }
@@ -908,17 +955,21 @@ const ItemsView = () => {
         </th>
     );
 
+    // --- MODIFICADO: Añadir nuevos lead times a las cabeceras de exportación ---
     const exportHeaders = [
         { label: "SKU", key: "sku" }, { label: "Nombre", key: "name" }, { label: "Categoría", key: "category" },
         { label: "En Stock", key: "in_stock" }, { label: "Unidad", key: "unit_of_measure" }, { label: "Ubicación", key: "location" },
-        { label: "Tipo", key: "item_type" }, { label: "Estado", key: "status" },
+        { label: "Tipo", key: "item_type" }, { label: "Estado", key: "status" }, 
+        { label: "Lead Time de Compra", key: "lead_time_compra" }, 
+        { label: "Lead Time de Fabricación", key: "lead_time_fabricacion" }
     ];
 
     const handlePdfExport = () => {
         const doc = new jsPDF();
+        const exportBody = items.map(item => exportHeaders.map(h => item[h.key] ?? 'N/A'));
         autoTable(doc, {
             head: [exportHeaders.map(h => h.label)],
-            body: items.map(item => exportHeaders.map(h => item[h.key] ?? 'N/A')),
+            body: exportBody,
         });
         doc.save('inventario.pdf');
     };
@@ -928,7 +979,15 @@ const ItemsView = () => {
             {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={handleUpdateItem} />}
             {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} fetchItems={fetchItems} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
-            {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedCount={selectedItems.length} />}
+            {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedItems={selectedItemsObjects} />}
+            {/* --- MODIFICADO: Renderizar el modal de confirmación --- */}
+            {isBulkDeleteConfirmOpen && (
+                <ConfirmationModal
+                    message={`¿Seguro que quieres eliminar los ${selectedSkus.length} ítems seleccionados? Esta acción no se puede deshacer.`}
+                    onConfirm={executeBulkDelete}
+                    onCancel={() => setIsBulkDeleteConfirmOpen(false)}
+                />
+            )}
 
             <Card title="Gestión de Ítems e Inventario">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -977,9 +1036,9 @@ const ItemsView = () => {
                     </div>
                 </div>
 
-                {selectedItems.length > 0 && (
+                {selectedSkus.length > 0 && (
                     <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg mb-6 flex justify-between items-center">
-                        <span className="font-semibold">{selectedItems.length} ítem(s) seleccionado(s)</span>
+                        <span className="font-semibold">{selectedSkus.length} ítem(s) seleccionado(s)</span>
                         <div className="flex items-center gap-4">
                             <button onClick={() => setIsBulkEditModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm text-blue-800 bg-blue-200 rounded-lg font-semibold hover:bg-blue-300"><Edit size={14}/>Editar Seleccionados</button>
                             <div className="border-l h-6 border-blue-300"></div>
@@ -997,7 +1056,7 @@ const ItemsView = () => {
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
-                                <th className="p-3 w-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedItems.length > 0 && selectedItems.length === items.length && items.length > 0} /></th>
+                                <th className="p-3 w-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedSkus.length > 0 && selectedSkus.length === items.length && items.length > 0} /></th>
                                 <th className="p-3">SKU</th>
                                 <th className="p-3">Nombre</th>
                                 <SortableHeader sortKey="item_type">Tipo de Prod.</SortableHeader>
@@ -1012,14 +1071,10 @@ const ItemsView = () => {
                             : error ? (<tr><td colSpan="8" className="text-center text-red-500 p-4">{error}</td></tr>) 
                             : (sortedItems.map(item => {
                                 const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
-                                const statusStyles = {
-                                    'Activo': 'bg-green-100 text-green-800',
-                                    'Inactivo': 'bg-yellow-100 text-yellow-800',
-                                    'Obsoleto': 'bg-gray-100 text-gray-800',                               
-                                };
+                                const statusStyles = { 'Activo': 'bg-green-100 text-green-800', 'Inactivo': 'bg-yellow-100 text-yellow-800', 'Obsoleto': 'bg-gray-100 text-gray-800' };
                                 return (
-                                <tr key={item.sku} className={`border-b hover:bg-gray-50 ${selectedItems.includes(item.sku) ? 'bg-blue-50' : ''}`}>
-                                    <td className="p-3"><input type="checkbox" checked={selectedItems.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} /></td>
+                                <tr key={item.sku} className={`border-b hover:bg-gray-50 ${selectedSkus.includes(item.sku) ? 'bg-blue-50' : ''}`}>
+                                    <td className="p-3"><input type="checkbox" checked={selectedSkus.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} /></td>
                                     <td className="p-3 font-medium text-gray-900">{item.sku}</td><td className="p-3">{item.name}</td>
                                     <td className="p-3 text-gray-500">{item.item_type}</td>
                                     <td className={`p-3 font-semibold ${needsReorder ? 'text-red-600' : 'text-gray-800'}`}>{item.in_stock} {item.unit_of_measure}</td>
@@ -1407,7 +1462,7 @@ const BOMEditor = ({ allItems, bomSku, onClose }) => {
             {parentItemSku && (
                 <>
                     <h3 className="text-lg font-semibold mt-8 mb-3 border-t pt-4 text-indigo-600">Componentes</h3>
-                    <div className="overflow-x-auto">
+                    <div>
                         <table className="w-full text-sm">
                             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                 <tr>
@@ -1686,19 +1741,15 @@ const PredictionView = ({ results, setResults }) => {
         seasonality_mode: 'additive',
     });
     
-    // --- NUEVO: Estado para la pestaña activa ---
     const [activeTabSku, setActiveTabSku] = useState(null);
 
-    // --- MODIFICADO: useEffect para buscar solo productos terminados ---
     useEffect(() => {
         const fetchProducts = async () => {
             try {
                 const response = await fetch(`${API_URL}/items/?item_type=Producto Terminado`);
                 const finishedProducts = await response.json();
                 setProducts(finishedProducts);
-                // La lógica para establecer el valor inicial se mueve aquí
                 if (finishedProducts.length > 0) {
-                    // Usamos una función en setSelectedSku para evitar la dependencia
                     setSelectedSku(currentSku => currentSku || finishedProducts[0].sku);
                 }
             } catch (error) {
@@ -1707,7 +1758,7 @@ const PredictionView = ({ results, setResults }) => {
             }
         };
         fetchProducts();
-    }, []); // Se ejecuta solo una vez al montar el componente
+    }, []);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
@@ -1765,7 +1816,6 @@ const PredictionView = ({ results, setResults }) => {
         setAdvancedSettings(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
     };
 
-    // --- MODIFICADO: handleGenerateForecast para manejar pestañas ---
     const handleGenerateForecast = async () => {
         if (!selectedSku) { setError('Por favor, selecciona un producto.'); return; }
         setLoading(true);
@@ -1837,17 +1887,14 @@ const PredictionView = ({ results, setResults }) => {
         }
     };
     
-    // --- NUEVO: Manejador para cerrar una pestaña ---
     const handleCloseTab = (skuToClose) => {
         setResults(prev => prev.filter(r => r.selectedSku !== skuToClose));
-        // Si la pestaña cerrada era la activa, selecciona otra o ninguna
         if (activeTabSku === skuToClose) {
             const remainingTabs = results.filter(r => r.selectedSku !== skuToClose);
             setActiveTabSku(remainingTabs.length > 0 ? remainingTabs[0].selectedSku : null);
         }
     };
     
-    // --- NUEVO: Obtiene los datos de la pestaña activa para renderizar ---
     const activeForecast = useMemo(() => {
         if (!activeTabSku) return null;
         return results.find(r => r.selectedSku === activeTabSku);
@@ -1909,7 +1956,6 @@ const PredictionView = ({ results, setResults }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                      <div className="col-span-1 md:col-span-3 lg:col-span-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Producto</label>
-                        {/* --- MODIFICADO: Se usa SearchableSelect --- */}
                         <SearchableSelect
                             options={products}
                             value={selectedSku}
@@ -1971,7 +2017,6 @@ const PredictionView = ({ results, setResults }) => {
                 </button>
             </Card>
 
-             {/* --- NUEVO: Contenedor y renderizado de pestañas --- */}
             {results.length > 0 && (
                  <div className="flex flex-wrap items-center gap-2 border-b-2 border-gray-200 pb-2">
                     {results.map(forecast => (
@@ -1991,7 +2036,7 @@ const PredictionView = ({ results, setResults }) => {
                                     activeTabSku === forecast.selectedSku ? 'hover:bg-indigo-700' : 'hover:bg-gray-400'
                                 }`}
                                 onClick={(e) => {
-                                    e.stopPropagation(); // Evita que se active el onClick del botón principal
+                                    e.stopPropagation();
                                     handleCloseTab(forecast.selectedSku);
                                 }} 
                             />
@@ -2000,7 +2045,6 @@ const PredictionView = ({ results, setResults }) => {
                 </div>
             )}
             
-            {/* --- MODIFICADO: Renderizado condicional del contenido de la pestaña activa --- */}
             {activeForecast && (
                 <div key={activeForecast.selectedSku} className="space-y-8 animate-fadeIn">
                     <Card title={`Resultados del Pronóstico para ${activeForecast.productName}`}>
@@ -2009,8 +2053,8 @@ const PredictionView = ({ results, setResults }) => {
                             {activeForecast.metrics && (
                                 <div className="text-xs text-right text-gray-600 bg-gray-50 p-2 rounded-lg border">
                                     <p><strong>Métricas del Modelo:</strong></p>
-                                    <p>Error Absoluto Medio (MAE): <strong>{activeForecast.metrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
-                                    <p>Raíz del Error Cuadrático Medio (RMSE): <strong>{activeForecast.metrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
+                                    <p>MAE: <strong>{activeForecast.metrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
+                                    <p>RMSE: <strong>{activeForecast.metrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
                                 </div>
                             )}
                         </div>
@@ -2370,7 +2414,6 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
     const [showHome, setShowHome] = useState(true);
-    // --- MODIFICADO: El estado de predicción ahora es un array para las pestañas ---
     const [predictionResults, setPredictionResults] = useState([]);
     const [pmpResults, setPmpResults] = useState([]);
 
