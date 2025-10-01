@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle, ChevronRight, Component, Combine  } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle, ChevronRight, Component, Combine, Sliders } from 'lucide-react';
 import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
@@ -241,7 +241,6 @@ const ItemModal = ({ item, onClose, onSave }) => {
 
 const ConfirmationModal = ({ message, onConfirm, onCancel }) => (<div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"><div className="bg-white rounded-lg shadow-xl p-8"><p className="text-lg mb-4">{message}</p><div className="flex justify-end gap-4"><button onClick={onCancel} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button><button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded">Confirmar</button></div></div></div>);
 
-// --- MODIFICADO: Modal para edición en grupo ---
 const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
     const [fieldsToUpdate, setFieldsToUpdate] = useState({
         reorder_point: '',
@@ -354,7 +353,6 @@ const BulkEditModal = ({ onClose, onSave, selectedCount }) => {
     );
 };
 
-
 const initialFilters = {
     status: '',
     critical_stock: false,
@@ -372,18 +370,10 @@ const ItemsView = () => {
     const [itemToDelete, setItemToDelete] = useState(null);
     const [isFileModalOpen, setIsFileModalOpen] = useState(false);
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
-
-    // Estado para manejar la selección múltiple
     const [selectedItems, setSelectedItems] = useState([]);
-
-    // Nuevos estados para los filtros
     const [filters, setFilters] = useState(initialFilters);
-
-    // Estados para las opciones de los desplegables
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([]);
-    
-    // --- NUEVO: Estado para el ordenamiento de la tabla ---
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
 
     const fetchSettings = useCallback(async () => {
@@ -450,7 +440,6 @@ const ItemsView = () => {
         } catch (err) { alert(`Error: ${err.message}`); }
     };
     
-    // MODIFICADO: Restaurada la función original para manejar el cambio de estado individual
     const handleStatusChange = (item, newStatus) => {
         handleUpdateItem(item, { status: newStatus });
     };
@@ -508,7 +497,6 @@ const ItemsView = () => {
         }
     };
 
-    // MODIFICADO: Lógica para edición en grupo sin la alerta del navegador
     const handleBulkEdit = async (fieldsToUpdate) => {
         try {
             const updatePromises = selectedItems.map(sku =>
@@ -518,7 +506,6 @@ const ItemsView = () => {
                     body: JSON.stringify(fieldsToUpdate),
                 }).then(res => {
                     if (!res.ok) {
-                        // Throw an error for this specific SKU to be caught by Promise.all
                         return res.json().then(err => Promise.reject({ sku, detail: err.detail }));
                     }
                     return res.json();
@@ -527,42 +514,41 @@ const ItemsView = () => {
             
             await Promise.all(updatePromises);
 
-            // If we get here, all were successful
             setIsBulkEditModalOpen(false);
             setSelectedItems([]);
             fetchItems();
         } catch (err) {
             alert(`Error en la edición masiva: ${err.message || `Falló la actualización para ${err.sku}`}`);
-            // Re-throw to be caught by the modal's logic if needed, or handle error display here
             throw err;
         }
     };
 
-
     const sortedItems = useMemo(() => {
+        if (!sortConfig.key) return [...items];
+
         let sortableItems = [...items];
-        if (sortConfig.key !== null) {
-            sortableItems.sort((a, b) => {
-                const valA = a[sortConfig.key] || '';
-                const valB = b[sortConfig.key] || '';
-                if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
+        sortableItems.sort((a, b) => {
+            const valA = a[sortConfig.key] || '';
+            const valB = b[sortConfig.key] || '';
+            if (valA < valB) {
+                return sortConfig.direction === 'ascending' ? -1 : 1;
+            }
+            if (valA > valB) {
+                return sortConfig.direction === 'ascending' ? 1 : -1;
+            }
+            return 0;
+        });
         return sortableItems;
     }, [items, sortConfig]);
-
+    
     const requestSort = (key) => {
-        let direction = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
+        if (sortConfig.key === key && sortConfig.direction === 'descending') {
+            setSortConfig({ key: null, direction: 'ascending' });
+        } else if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            setSortConfig({ key, direction: 'descending' });
+        } else {
+            setSortConfig({ key, direction: 'ascending' });
         }
-        setSortConfig({ key, direction });
     };
 
     const SortableHeader = ({ children, sortKey }) => (
@@ -574,16 +560,10 @@ const ItemsView = () => {
         </th>
     );
 
-
     const exportHeaders = [
-        { label: "SKU", key: "sku" },
-        { label: "Nombre", key: "name" },
-        { label: "Categoría", key: "category" },
-        { label: "En Stock", key: "in_stock" },
-        { label: "Unidad", key: "unit_of_measure" },
-        { label: "Ubicación", key: "location" },
-        { label: "Tipo", key: "item_type" },
-        { label: "Estado", key: "status" },
+        { label: "SKU", key: "sku" }, { label: "Nombre", key: "name" }, { label: "Categoría", key: "category" },
+        { label: "En Stock", key: "in_stock" }, { label: "Unidad", key: "unit_of_measure" }, { label: "Ubicación", key: "location" },
+        { label: "Tipo", key: "item_type" }, { label: "Estado", key: "status" },
     ];
 
     const handlePdfExport = () => {
@@ -655,7 +635,6 @@ const ItemsView = () => {
             {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
             {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedCount={selectedItems.length} />}
-
 
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <div className="flex items-center gap-2 w-full md:w-1/3">
@@ -739,8 +718,7 @@ const ItemsView = () => {
                         : (sortedItems.map(item => {
                             const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
                             const statusStyles = {
-                                'Activo': 'bg-green-100 text-green-800',
-                                'Inactivo': 'bg-yellow-100 text-yellow-800',
+                                'Activo': 'bg-green-100 text-green-800', 'Inactivo': 'bg-yellow-100 text-yellow-800',
                                 'Obsoleto': 'bg-gray-100 text-gray-800',                               
                             };
                             return (
@@ -751,30 +729,15 @@ const ItemsView = () => {
                                 <td className={`p-3 font-semibold ${needsReorder ? 'text-red-600' : 'text-gray-800'}`}>{item.in_stock} {item.unit_of_measure}</td>
                                 <td className="p-3">{item.location ?? 'N/A'}</td>
                                 <td className="p-3 overflow-visible">
-                                     <select 
-                                        value={item.status} 
-                                        onChange={(e) => handleStatusChange(item, e.target.value)}
+                                     <select value={item.status} onChange={(e) => handleStatusChange(item, e.target.value)}
                                         className={`px-3 py-1 text-xs font-semibold rounded-full w-28 text-center border-none appearance-none cursor-pointer ${statusStyles[item.status] || 'bg-gray-100'}`}
-                                        style={{ backgroundImage: 'none' }}
-                                    >
-                                        <option value="Activo">Activo</option>
-                                        <option value="Inactivo">Inactivo</option>
-                                        <option value="Obsoleto">Obsoleto</option>
+                                        style={{ backgroundImage: 'none' }}>
+                                        <option value="Activo">Activo</option><option value="Inactivo">Inactivo</option><option value="Obsoleto">Obsoleto</option>
                                     </select>
                                 </td>
                                 <td className="p-3 flex gap-4">
-                                    <button 
-                                        onClick={() => setItemToEdit(item)} 
-                                        className="text-blue-600 hover:text-blue-800" 
-                                        title="Editar">
-                                        <Edit size={16}/>
-                                    </button>
-                                    <button 
-                                        onClick={() => setItemToDelete(item)} 
-                                        className="text-red-600 hover:text-red-800" 
-                                        title="Eliminar">
-                                        <Trash2 size={16}/>
-                                    </button>
+                                    <button onClick={() => setItemToEdit(item)} className="text-blue-600 hover:text-blue-800" title="Editar"><Edit size={16}/></button>
+                                    <button onClick={() => setItemToDelete(item)} className="text-red-600 hover:text-red-800" title="Eliminar"><Trash2 size={16}/></button>
                                 </td>
                             </tr>
                             );
@@ -786,10 +749,8 @@ const ItemsView = () => {
     );
 };
 
-
-// --- BOM VIEW ---
 const BOMView = () => {
-    const [view, setView] = useState('list'); // 'list', 'editor', 'tree'
+    const [view, setView] = useState('list');
     const [selectedBomSku, setSelectedBomSku] = useState(null);
     const [allItems, setAllItems] = useState([]);
     const [loadingItems, setLoadingItems] = useState(true);
@@ -832,14 +793,10 @@ const BOMView = () => {
 
     const renderView = () => {
         switch (view) {
-            case 'list':
-                return <BOMsTable onEdit={(sku) => handleNavigate('editor', sku)} onCreateNew={() => handleNavigate('editor')} onViewTree={(sku) => handleNavigate('tree', sku)} />;
-            case 'editor':
-                return <BOMEditor allItems={allItems} bomSku={selectedBomSku} onClose={() => handleNavigate('list')} onCreateNewItem={() => setIsItemModalOpen(true)} />;
-            case 'tree':
-                 return <BomTreeViewModal sku={selectedBomSku} onClose={() => handleNavigate('list')} />;
-            default:
-                return null;
+            case 'list': return <BOMsTable onEdit={(sku) => handleNavigate('editor', sku)} onCreateNew={() => handleNavigate('editor')} onViewTree={(sku) => handleNavigate('tree', sku)} />;
+            case 'editor': return <BOMEditor allItems={allItems} bomSku={selectedBomSku} onClose={() => handleNavigate('list')} onCreateNewItem={() => setIsItemModalOpen(true)} />;
+            case 'tree': return <BomTreeViewModal sku={selectedBomSku} onClose={() => handleNavigate('list')} />;
+            default: return null;
         }
     }
 
@@ -1377,17 +1334,40 @@ const BomTreeViewModal = ({ sku, onClose }) => {
     );
 }
 
-// --- PREDICTION VIEW ---
+const parseCSV = (csvText) => {
+    const lines = csvText.trim().split(/\r\n|\n/);
+    if (lines.length === 0) return { headers: [], data: [] };
+    const headers = lines[0].split(',').map(h => h.trim());
+    const data = lines.slice(1).map(line => {
+        const values = line.split(',');
+        return headers.reduce((obj, header, index) => {
+            obj[header] = values[index] ? values[index].trim() : '';
+            return obj;
+        }, {});
+    });
+    return { headers, data };
+};
+
 const PredictionView = ({ results, setResults }) => {
     const [file, setFile] = useState(null);
+    const [csvPreview, setCsvPreview] = useState({ headers: [], data: [] });
+    const [columnMap, setColumnMap] = useState({ ds: '', y: '', sku: '' });
+    
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState([]);
-    // Local state for UI controls
+    
     const [selectedSku, setSelectedSku] = useState(results?.selectedSku || '');
     const [forecastPeriods, setForecastPeriods] = useState(90);
     const [forecastModel, setForecastModel] = useState('prophet');
+
+    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [advancedSettings, setAdvancedSettings] = useState({
+        changepoint_prior_scale: 0.05,
+        seasonality_prior_scale: 10.0,
+        seasonality_mode: 'additive',
+    });
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -1408,38 +1388,111 @@ const PredictionView = ({ results, setResults }) => {
     }, [selectedSku]);
 
     const handleFileChange = (e) => {
-        setFile(e.target.files[0]);
+        const selectedFile = e.target.files[0];
+        if (!selectedFile) return;
+
+        setFile(selectedFile);
         setMessage('');
         setError('');
+        setCsvPreview({ headers: [], data: [] });
+        setColumnMap({ ds: '', y: '', sku: '' });
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            const { headers, data } = parseCSV(text);
+            setCsvPreview({ headers, data: data.slice(0, 5) });
+
+            const lowerCaseHeaders = headers.map(h => h.toLowerCase());
+            const dsGuess = headers[lowerCaseHeaders.findIndex(h => h.includes('fecha'))] || headers[0] || '';
+            const yGuess = headers[lowerCaseHeaders.findIndex(h => h.includes('cantidad'))] || headers[1] || '';
+            const skuGuess = headers[lowerCaseHeaders.findIndex(h => h.includes('producto') || h.includes('sku'))] || headers[2] || '';
+            setColumnMap({ ds: dsGuess, y: yGuess, sku: skuGuess });
+        };
+        reader.readAsText(selectedFile);
     };
 
     const handleFileUpload = async () => {
-        if (!file) {
-            setError('Por favor, selecciona un archivo CSV.');
-            return;
-        }
+        if (!file) { setError('Por favor, selecciona un archivo CSV.'); return; }
+        if (!columnMap.ds || !columnMap.y || !columnMap.sku) { setError('Por favor, mapea las columnas de fecha, valor y SKU.'); return; }
+
         setLoading(true);
         setMessage('');
         setError('');
+
         const formData = new FormData();
         formData.append('file', file);
+        
+        const params = new URLSearchParams({ dsCol: columnMap.ds, yCol: columnMap.y, skuCol: columnMap.sku });
 
         try {
-            const response = await fetch(`${API_URL}/sales/upload`, {
-                method: 'POST',
-                body: formData,
-            });
+            const response = await fetch(`${API_URL}/sales/upload?${params.toString()}`, { method: 'POST', body: formData });
             const data = await response.json();
-            if (!response.ok) {
-                const errorDetail = data.detail.replace(/\n/g, '<br/>');
-                const errorElement = document.createElement('div');
-                errorElement.innerHTML = errorDetail;
-                setError(errorElement.textContent || errorElement.innerText);
-                return;
-            }
+            if (!response.ok) throw new Error(data.detail || 'Error al cargar el archivo.');
             setMessage(data.message);
         } catch (error) {
             setError(`Error: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const handleAdvancedSettingsChange = (e) => {
+        const { name, value, type } = e.target;
+        setAdvancedSettings(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) : value }));
+    };
+
+    const handleGenerateForecast = async () => {
+        if (!selectedSku) { setError('Por favor, selecciona un producto.'); return; }
+        setLoading(true);
+        setMessage('');
+        setError('');
+
+        try {
+            const salesResponse = await fetch(`${API_URL}/sales/${selectedSku}`);
+            let sales = [];
+            if (salesResponse.ok) sales = await salesResponse.json();
+
+            const forecastUrl = `${API_URL}/forecast/${selectedSku}?periods=${forecastPeriods}&model_type=${forecastModel}`;
+            
+            const forecastResponse = await fetch(forecastUrl, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(advancedSettings)
+            });
+            
+            const data = await forecastResponse.json();
+            if (!forecastResponse.ok) throw new Error(data.detail || 'Error al generar el pronóstico.');
+            
+            const formattedForecast = data.forecast.map(d => ({ ...d, ds: new Date(d.ds) }));
+            const combinedData = [
+                ...sales.map(s => ({ ds: new Date(s.ds + 'T00:00:00'), historico: s.y })),
+                ...formattedForecast.map(f => ({
+                    ds: f.ds, pronostico: f.yhat,
+                    min: f.yhat_lower, max: f.yhat_upper
+                }))
+            ].sort((a, b) => a.ds - b.ds);
+            
+            const formattedComponents = {};
+            if (data.components) {
+                for (const key in data.components) {
+                    if (data.components[key]) {
+                        formattedComponents[key] = data.components[key].map(d => ({ ...d, ds: new Date(d.ds) }));
+                    }
+                }
+            }
+            
+            setResults({
+                forecastData: combinedData,
+                demandSummary: data.summary,
+                metrics: data.metrics,
+                components: formattedComponents,
+                selectedSku: selectedSku
+            });
+            setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
+        } catch (error) {
+            setError(`Error: ${error.message}`);
+            setResults(null);
         } finally {
             setLoading(false);
         }
@@ -1452,73 +1505,58 @@ const PredictionView = ({ results, setResults }) => {
         } catch { return dateString; }
     };
     
-    const handleGenerateForecast = async () => {
-        if (!selectedSku) {
-            setError('Por favor, selecciona un producto.');
-            return;
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            const date = new Date(label);
+            const formattedDate = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            return (
+                <div className="bg-white p-3 border rounded-md shadow-lg">
+                    <p className="font-semibold">{formattedDate}</p>
+                    {payload.map((p, i) => (
+                        <p key={i} style={{ color: p.color }}>{`${p.name}: ${p.value.toFixed(2)}`}</p>
+                    ))}
+                </div>
+            );
         }
-        setLoading(true);
-        setMessage('');
-        setError('');
-
-        try {
-            const salesResponse = await fetch(`${API_URL}/sales/${selectedSku}`);
-            let sales = [];
-            if (salesResponse.ok) {
-                sales = await salesResponse.json();
-            }
-
-            const forecastUrl = `${API_URL}/forecast/${selectedSku}?periods=${forecastPeriods}&model_type=${forecastModel}`;
-            const forecastResponse = await fetch(forecastUrl, { method: 'POST' });
-            
-            const data = await forecastResponse.json();
-            if (!forecastResponse.ok) {
-                throw new Error(data.detail || 'Error al generar el pronóstico.');
-            }
-
-            const formattedForecast = data.forecast.map(d => ({ ...d, ds: new Date(d.ds) }));
-            
-            const combinedData = [
-                ...sales.map(s => ({ ds: new Date(s.ds + 'T00:00:00'), historico: s.y })),
-                ...formattedForecast.map(f => ({
-                    ds: f.ds,
-                    pronostico: f.yhat,
-                    min: f.yhat_lower,
-                    max: f.yhat_upper
-                }))
-            ].sort((a, b) => a.ds - b.ds);
-            
-            // Update shared state in App component
-            setResults({
-                forecastData: combinedData,
-                demandSummary: data.summary,
-                metrics: data.metrics,
-                selectedSku: selectedSku
-            });
-            setMessage(`Pronóstico para ${selectedSku} generado exitosamente.`);
-        } catch (error) {
-            setError(`Error: ${error.message}`);
-            setResults(null); // Clear previous results on error
-        } finally {
-            setLoading(false);
-        }
+        return null;
     };
-    
+
     return (
         <div className="p-8 space-y-8">
             <div className="bg-white p-6 rounded-xl shadow-md">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">1. Cargar Historial de Ventas</h2>
-                <p className="text-sm text-gray-600 mb-4">Sube un archivo CSV con las columnas: `fecha_venta` (AAAA-MM-DD), `id_producto`, `cantidad_vendida`.</p>
-                <div className="flex items-center gap-4">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">1. Cargar y Mapear Historial de Ventas</h2>
+                <div className="flex items-center gap-4 mb-4">
                     <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
-                    <button onClick={handleFileUpload} disabled={loading} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
-                        <Upload size={16}/> {loading ? 'Cargando...' : 'Cargar Archivo'}
-                    </button>
                 </div>
+
+                {csvPreview.headers.length > 0 && (
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="text-md font-semibold text-gray-700 mb-2">Vista Previa de Datos</h3>
+                            <div className="overflow-x-auto max-h-48 border rounded-md">
+                                <table className="w-full text-xs">
+                                    <thead className="bg-gray-100 sticky top-0"><tr>{csvPreview.headers.map(h => <th key={h} className="p-2 text-left">{h}</th>)}</tr></thead>
+                                    <tbody>{csvPreview.data.map((row, i) => <tr key={i} className="border-t">{csvPreview.headers.map(h => <td key={h} className="p-2">{row[h]}</td>)}</tr>)}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-md font-semibold text-gray-700 mb-2">Mapeo de Columnas</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div><label className="text-sm">Columna de Fecha (ds)</label><select value={columnMap.ds} onChange={e => setColumnMap(p => ({...p, ds: e.target.value}))} className="w-full p-2 border rounded mt-1"><option value="">Seleccionar...</option>{csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
+                                <div><label className="text-sm">Columna de Valor (y)</label><select value={columnMap.y} onChange={e => setColumnMap(p => ({...p, y: e.target.value}))} className="w-full p-2 border rounded mt-1"><option value="">Seleccionar...</option>{csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
+                                <div><label className="text-sm">Columna de SKU</label><select value={columnMap.sku} onChange={e => setColumnMap(p => ({...p, sku: e.target.value}))} className="w-full p-2 border rounded mt-1"><option value="">Seleccionar...</option>{csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
+                            </div>
+                        </div>
+                        <button onClick={handleFileUpload} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md disabled:bg-gray-400">
+                            <Upload size={16}/> {loading ? 'Procesando...' : 'Confirmar y Cargar Datos'}
+                        </button>
+                    </div>
+                )}
                 {message && <p className="mt-4 text-sm text-green-700 bg-green-50 p-3 rounded-md">{message}</p>}
                 {error && <div className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-md whitespace-pre-wrap">{error}</div>}
             </div>
-
+            
             <div className="bg-white p-6 rounded-xl shadow-md">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">2. Generar Pronóstico de Demanda</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -1541,14 +1579,49 @@ const PredictionView = ({ results, setResults }) => {
                         <input type="number" value={forecastPeriods} onChange={(e) => setForecastPeriods(e.target.value)} className="p-2 border rounded-md w-full" placeholder="Ej. 90"/>
                      </div>
                 </div>
+
                 <div className="mt-4">
-                    <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-green-600 rounded-md disabled:bg-gray-400">
-                        <LineChartIcon size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
+                    <button onClick={() => setShowAdvanced(!showAdvanced)} className="flex items-center gap-2 text-sm text-blue-600 mb-4">
+                        <Sliders size={16}/> {showAdvanced ? 'Ocultar' : 'Mostrar'} Configuración Avanzada
                     </button>
+                    {showAdvanced && forecastModel === 'prophet' && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 border rounded-md bg-gray-50 mb-4">
+                            <div className="group relative">
+                                <label className="block text-sm font-medium text-gray-700">Flexibilidad de Tendencia</label>
+                                <input type="range" name="changepoint_prior_scale" min="0.01" max="1.0" step="0.01" value={advancedSettings.changepoint_prior_scale} onChange={handleAdvancedSettingsChange} className="w-full"/>
+                                <span className="text-xs text-gray-500">Valor: {advancedSettings.changepoint_prior_scale}</span>
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 text-xs text-white bg-gray-700 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    Controla la rapidez con que el modelo se adapta a los cambios en la tendencia. Valores altos son más flexibles.
+                                </span>
+                            </div>
+                             <div className="group relative">
+                                <label className="block text-sm font-medium text-gray-700">Fuerza de Estacionalidad</label>
+                                <input type="range" name="seasonality_prior_scale" min="1.0" max="20.0" step="0.5" value={advancedSettings.seasonality_prior_scale} onChange={handleAdvancedSettingsChange} className="w-full"/>
+                                 <span className="text-xs text-gray-500">Valor: {advancedSettings.seasonality_prior_scale}</span>
+                                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 text-xs text-white bg-gray-700 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    Ajusta la influencia de los patrones estacionales (semanales, anuales).
+                                </span>
+                            </div>
+                            <div className="group relative">
+                                <label className="block text-sm font-medium text-gray-700">Modo de Estacionalidad</label>
+                                <div className="flex gap-4 mt-2">
+                                    <label className="text-sm"><input type="radio" name="seasonality_mode" value="additive" checked={advancedSettings.seasonality_mode === 'additive'} onChange={handleAdvancedSettingsChange}/> Aditivo</label>
+                                    <label className="text-sm"><input type="radio" name="seasonality_mode" value="multiplicative" checked={advancedSettings.seasonality_mode === 'multiplicative'} onChange={handleAdvancedSettingsChange}/> Multiplicativo</label>
+                                </div>
+                                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 text-xs text-white bg-gray-700 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                     'Multiplicativo' si las fluctuaciones estacionales crecen con la tendencia (p.ej. ventas navideñas).
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                <button onClick={handleGenerateForecast} disabled={loading || !selectedSku} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-green-600 rounded-md disabled:bg-gray-400">
+                    <LineChartIcon size={16}/> {loading ? 'Generando...' : 'Generar Pronóstico'}
+                </button>
             </div>
             
-            {results && results.forecastData && results.forecastData.length > 0 && (
+            {results && results.forecastData && (
                 <div className="bg-white p-6 rounded-xl shadow-md">
                     <div className="flex justify-between items-start mb-4">
                         <h3 className="text-lg font-bold text-gray-800">Pronóstico para {results.selectedSku}</h3>
@@ -1561,21 +1634,53 @@ const PredictionView = ({ results, setResults }) => {
                         )}
                     </div>
                     <ResponsiveContainer width="100%" height={400}>
-                         <ComposedChart data={results.forecastData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                         <ComposedChart data={results.forecastData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })} />
+                            <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} />
                             <YAxis />
-                            <Tooltip labelFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} />
+                            <Tooltip content={<CustomTooltip />} />
                             <Legend />
                             <Area type="monotone" dataKey="historico" name="Ventas Históricas" stroke="#1d4ed8" fill="#3b82f6" fillOpacity={0.6} />
-                            <Line type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" />
-                            <Area type="monotone" dataKey="max" name="Intervalo de Confianza" stroke="#9ca3af" fill="#e5e7eb" fillOpacity={0.2} strokeDasharray="5 5" data={results.forecastData.filter(d => d.max !== undefined)} />
+                            <Line type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" dot={false}/>
+                            <Area type="monotone" dataKey="max" name="Intervalo de Confianza" stroke="none" fill="#e5e7eb" fillOpacity={0.5} data={results.forecastData.filter(d => d.max !== undefined)} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
             )}
-
-            {results && results.demandSummary && results.demandSummary.length > 0 && (
+            
+            {results && results.components && (
+                <div className="bg-white p-6 rounded-xl shadow-md">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Componentes del Pronóstico</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {results.components.trend && (
+                            <div>
+                                <h4 className="font-semibold text-center mb-2">Tendencia</h4>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <LineChart data={results.components.trend}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} /><YAxis domain={['dataMin', 'dataMax']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Tendencia" stroke="#8884d8" dot={false} /></LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                        {results.components.weekly && (
+                             <div>
+                                <h4 className="font-semibold text-center mb-2">Estacionalidad Semanal</h4>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <LineChart data={results.components.weekly.slice(0, 7)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { weekday: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Semanal" stroke="#82ca9d" dot={false} /></LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                         {results.components.yearly && (
+                             <div>
+                                <h4 className="font-semibold text-center mb-2">Estacionalidad Anual</h4>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <LineChart data={results.components.yearly}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Anual" stroke="#ffc658" dot={false} /></LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            
+            {results && results.demandSummary && (
                 <div className="bg-white p-6 rounded-xl shadow-md">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Resumen de Demanda Semanal para {results.selectedSku}</h3>
                     <div className="overflow-x-auto">
@@ -1603,7 +1708,6 @@ const PredictionView = ({ results, setResults }) => {
     );
 };
 
-// --- PMP VIEW ---
 const PMPView = ({ results, setResults }) => {
     const [products, setProducts] = useState([]);
     const [selectedSku, setSelectedSku] = useState(results?.selectedSku || '');
@@ -1642,14 +1746,12 @@ const PMPView = ({ results, setResults }) => {
                 throw new Error(data.detail || 'Error al generar el PMP.');
             }
             
-            // Initialize the interactive table structure
             const initialTable = data.demand_forecast.map(period => ({
                 period: period.period,
                 demand: period.total_demand,
-                plannedProduction: 0, // Editable field
+                plannedProduction: 0,
             }));
             
-            // Set results to be managed by this component's state
             setResults({
                 initialData: data,
                 tableState: initialTable,
@@ -1664,7 +1766,6 @@ const PMPView = ({ results, setResults }) => {
         }
     };
     
-    // Recalculate the PMP table whenever the planned production changes
     const handleProductionChange = (index, value) => {
         setResults(prev => {
             const newTableState = [...prev.tableState];
@@ -1673,7 +1774,6 @@ const PMPView = ({ results, setResults }) => {
         });
     };
     
-    // Perform calculations for display
     const calculatedPmp = React.useMemo(() => {
         if (!results || !results.tableState) return null;
 
@@ -1684,11 +1784,7 @@ const PMPView = ({ results, setResults }) => {
             const initialInventory = index === 0 ? initialData.initial_inventory : calculatedPeriods[index - 1].projectedInventory;
             const projectedInventory = initialInventory + period.plannedProduction - period.demand;
             
-            calculatedPeriods.push({
-                ...period,
-                initialInventory,
-                projectedInventory
-            });
+            calculatedPeriods.push({ ...period, initialInventory, projectedInventory });
         });
 
         return {
@@ -1744,16 +1840,13 @@ const PMPView = ({ results, setResults }) => {
                                             if (rowName === 'Producción Planificada') {
                                                 return (
                                                     <td key={index} className="p-1 border border-gray-200 text-center bg-yellow-50">
-                                                        <input 
-                                                            type="number"
-                                                            value={cellData}
+                                                        <input type="number" value={cellData}
                                                             onChange={(e) => handleProductionChange(index, e.target.value)}
                                                             className="w-20 p-2 text-center bg-transparent border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
                                                         />
                                                     </td>
                                                 );
                                             }
-
                                             let cellClass = "p-3 border border-gray-200 text-center";
                                             if (rowName === 'Inventario Proyectado' && cellData < 0) {
                                                 cellClass += " bg-red-100 text-red-800 font-bold";
@@ -1771,8 +1864,6 @@ const PMPView = ({ results, setResults }) => {
     )
 };
 
-
-// --- MAIN APP & OTHER COMPONENTS ---
 const DashboardView = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1809,12 +1900,7 @@ const DashboardView = () => {
     ).length;
     const obsoleteItems = items.filter(item => item.status === 'Obsoleto').length;
 
-    return {
-      totalSkus: items.length,
-      totalUnits,
-      lowStockItems,
-      obsoleteItems,
-    };
+    return { totalSkus: items.length, totalUnits, lowStockItems, obsoleteItems };
   }, [items]);
   
   if (loading) return <div className="p-8 text-center">Cargando datos del dashboard...</div>;
@@ -1885,7 +1971,6 @@ const SettingsView = () => {
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
-    // NUEVO: Estados para los nuevos campos de las listas
     const [newLocation, setNewLocation] = useState('');
     const [newUnit, setNewUnit] = useState('');
 
@@ -1926,7 +2011,7 @@ const SettingsView = () => {
             });
             if (!response.ok) throw new Error('Error al guardar la configuración.');
             setMessage('Configuración guardada exitosamente.');
-            setTimeout(() => setMessage(''), 3000); // Hide message after 3 seconds
+            setTimeout(() => setMessage(''), 3000);
         } catch (error) {
             setError(`Error: ${error.message}`);
         }
@@ -1956,7 +2041,6 @@ const SettingsView = () => {
             <div className="bg-white p-8 rounded-xl shadow-md">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">Configuración del Sistema</h2>
                 
-                {/* Company Info Section */}
                 <div className="mb-8">
                     <h3 className="text-lg font-semibold text-gray-700 mb-4">Información de la Empresa</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1971,7 +2055,6 @@ const SettingsView = () => {
                     </div>
                 </div>
 
-                {/* Production & Inventory Section */}
                 <div className="mb-8">
                      <h3 className="text-lg font-semibold text-gray-700 mb-4">Producción e Inventario</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1992,11 +2075,9 @@ const SettingsView = () => {
                      </div>
                 </div>
 
-                {/* --- NUEVA SECCIÓN: Gestión de Listas Desplegables --- */}
                 <div className="mb-8">
                     <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros de Ítems</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Gestión de Ubicaciones */}
                         <div>
                             <label className="block text-sm font-medium text-gray-600">Ubicaciones de Bodega</label>
                             <div className="flex items-center gap-2 mt-1">
@@ -2012,7 +2093,6 @@ const SettingsView = () => {
                                 ))}
                             </ul>
                         </div>
-                        {/* Gestión de Unidades de Medida */}
                         <div>
                             <label className="block text-sm font-medium text-gray-600">Unidades de Medida</label>
                              <div className="flex items-center gap-2 mt-1">
@@ -2041,11 +2121,10 @@ const SettingsView = () => {
     );
 };
 
-
 const PlaceholderView = ({ title }) => <div className="p-8"><div className="bg-white p-10 rounded-2xl shadow-md text-center"><h2 className="text-2xl font-bold text-gray-800">{title}</h2><p className="text-gray-500 mt-2">Este módulo estará disponible próximamente.</p></div></div>;
+
 function App() {
-  const [activeView, setActiveView] = useState('pmp');
-  // State has been split per module for cleaner management and to fix update bugs.
+  const [activeView, setActiveView] = useState('items');
   const [predictionResults, setPredictionResults] = useState(null);
   const [pmpResults, setPmpResults] = useState(null);
 
