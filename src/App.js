@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle } from 'lucide-react';
-import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Bell, ChevronDown, AlertTriangle, PlusCircle, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle, ChevronRight, Component, Combine  } from 'lucide-react';
+import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -9,6 +9,112 @@ import autoTable from 'jspdf-autotable';
 const API_URL = 'http://127.0.0.1:8000';
 
 // --- COMPONENTS --- 
+
+const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar...", disabled = false }) => {
+    const [query, setQuery] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    const [filters, setFilters] = useState({ item_type: '', unit_of_measure: '' });
+    const wrapperRef = useRef(null);
+    
+    const selectedOption = options.find(opt => opt.sku === value);
+
+    // --- Lógica para los filtros ---
+    const uniqueTypes = useMemo(() => [...new Set(options.map(opt => opt.item_type).filter(Boolean))], [options]);
+    const uniqueUnits = useMemo(() => [...new Set(options.map(opt => opt.unit_of_measure).filter(Boolean))], [options]);
+
+    const filteredOptions = useMemo(() => {
+        return options.filter(opt =>
+            (query === '' || opt.sku.toLowerCase().includes(query.toLowerCase()) || opt.name.toLowerCase().includes(query.toLowerCase())) &&
+            (filters.item_type === '' || opt.item_type === filters.item_type) &&
+            (filters.unit_of_measure === '' || opt.unit_of_measure === filters.unit_of_measure)
+        );
+    }, [query, filters, options]);
+
+    const handleSelect = (sku) => {
+        onChange(sku);
+        setIsOpen(false);
+        setQuery('');
+        setFilters({ item_type: '', unit_of_measure: '' });
+    };
+    
+    // --- Hook para cerrar el dropdown al hacer clic afuera ---
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [wrapperRef]);
+
+
+    return (
+        <div className="relative w-full" ref={wrapperRef}>
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full p-2 border rounded-md text-left flex justify-between items-center ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+            >
+                {selectedOption ? (
+                    <div className="text-sm">
+                        <span className="font-semibold text-gray-800">{selectedOption.name}</span>
+                        <span className="text-gray-500 ml-2">({selectedOption.sku})</span>
+                    </div>
+                ) : <span className="text-gray-500">{placeholder}</span>}
+                <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-y-auto">
+                    <div className="p-2 border-b">
+                        <input
+                            type="text"
+                            placeholder="Buscar por SKU o nombre..."
+                            className="w-full p-2 border rounded-md mb-2"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                        />
+                        {/* --- NUEVO: Filtros --- */}
+                        <div className="flex gap-2 text-xs">
+                            <select 
+                                value={filters.item_type} 
+                                onChange={e => setFilters(f => ({...f, item_type: e.target.value}))}
+                                className="w-1/2 p-1 border rounded"
+                            >
+                                <option value="">Todo tipo</option>
+                                {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                            </select>
+                            <select 
+                                value={filters.unit_of_measure}
+                                onChange={e => setFilters(f => ({...f, unit_of_measure: e.target.value}))}
+                                className="w-1/2 p-1 border rounded"
+                            >
+                                <option value="">Toda unidad</option>
+                                {uniqueUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <ul>
+                        {filteredOptions.length > 0 ? filteredOptions.map(opt => (
+                            <li
+                                key={opt.sku}
+                                onClick={() => handleSelect(opt.sku)}
+                                className="p-3 hover:bg-blue-50 cursor-pointer text-sm"
+                            >
+                                <div className="font-semibold text-gray-800">{opt.name} ({opt.sku})</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                    Tipo: <span className="font-medium">{opt.item_type}</span> | Unidad: <span className="font-medium">{opt.unit_of_measure}</span>
+                                </div>
+                            </li>
+                        )) : <li className="p-3 text-sm text-gray-500">No se encontraron ítems.</li>}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const Sidebar = ({ activeView, setActiveView }) => {
   const navItems = [
     { name: 'Dashboard', icon: Home, view: 'dashboard' }, { name: 'Gestión de Ítems', icon: Package, view: 'items' }, { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
@@ -30,6 +136,7 @@ const Sidebar = ({ activeView, setActiveView }) => {
     </div>
   );
 };
+
 const Header = ({ title }) => (
   <header className="flex justify-between items-center p-6 bg-white border-b border-gray-200 sticky top-0 z-10">
     <h1 className="text-3xl font-bold text-gray-800">{title}</h1>
@@ -744,24 +851,84 @@ const BOMView = () => {
     );
 };
 
+const ItemsTable = ({ flatList, itemSearchQuery, setItemSearchQuery }) => {
+    const filteredFlatList = useMemo(() => {
+        if (!itemSearchQuery) return flatList;
+        const queryLower = itemSearchQuery.toLowerCase();
+        return flatList.filter(item =>
+            item.name.toLowerCase().includes(queryLower) ||
+             item.sku.toLowerCase().includes(queryLower)
+        );
+    }, [flatList, itemSearchQuery]);
+
+    return (
+        <div>
+            {/* --- NUEVO: Buscador para la lista de ítems --- */}
+            <div className="mb-4">
+                <input
+                    type="text"
+                    value={itemSearchQuery}
+                    onChange={(e) => setItemSearchQuery(e.target.value)}
+                    placeholder="Buscar por SKU o nombre en la lista..."
+                    className="w-full p-2 border rounded-md"
+                />
+            </div>
+            <div className="border rounded-lg bg-white">
+                <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th className="p-3">Ítem (SKU)</th>
+                            <th className="p-3">Tipo de Producto</th>
+                            <th className="p-3 text-right">Cantidad Total Requerida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredFlatList.map(item => (
+                            <tr key={item.sku} className="border-b hover:bg-gray-50">
+                                <td className="p-3 font-medium text-gray-900">{item.name} ({item.sku})</td>
+                                <td className="p-3 text-gray-600">{item.item_type}</td>
+                                <td className="p-3 text-right font-semibold text-blue-600">
+                                    {item.total_quantity} {item.unit_of_measure}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+
 const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
     const [boms, setBoms] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [bomToDelete, setBomToDelete] = useState(null);
 
+    // --- NUEVO: Estados para búsqueda, filtros y selección ---
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filters, setFilters] = useState({ item_type: '' });
+    const [selectedBoms, setSelectedBoms] = useState([]);
+
+    // --- MODIFICADO: fetchBoms ahora usa los filtros y la búsqueda ---
     const fetchBoms = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/boms`);
+            const params = new URLSearchParams();
+            if (searchQuery) params.append('search', searchQuery);
+            if (filters.item_type) params.append('item_type', filters.item_type);
+
+            const response = await fetch(`${API_URL}/boms?${params.toString()}`);
             if (!response.ok) throw new Error('Error al cargar BOMs.');
-            setBoms(await response.json());
+            const data = await response.json();
+            setBoms(data);
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [searchQuery, filters]);
     
     useEffect(() => { fetchBoms(); }, [fetchBoms]);
 
@@ -772,55 +939,157 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
             fetchBoms();
         } catch(err) { alert(`Error: ${err.message}`); }
     };
+
+    // --- NUEVO: Handlers para selección y acciones en masa ---
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
+    };
+
+    const clearFilters = () => {
+        setFilters({ item_type: '' });
+        setSearchQuery('');
+    };
+    
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedBoms(boms.map(bom => bom.sku));
+        } else {
+            setSelectedBoms([]);
+        }
+    };
+
+    const handleSelectItem = (sku) => {
+        setSelectedBoms(prev =>
+            prev.includes(sku) ? prev.filter(id => id !== sku) : [...prev, sku]
+        );
+    };
+
+    const handleBulkDelete = async () => {
+        if (window.confirm(`¿Seguro que quieres eliminar ${selectedBoms.length} BOM(s) seleccionado(s)?`)) {
+            try {
+                const response = await fetch(`${API_URL}/boms/bulk-delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ skus: selectedBoms })
+                });
+                if (!response.ok && response.status !== 204) {
+                    throw new Error('Error en la eliminación masiva.');
+                }
+                setSelectedBoms([]);
+                fetchBoms();
+            } catch (err) {
+                alert(`Error al eliminar en masa: ${err.message}`);
+            }
+        }
+    };
     
     return (
         <div className="p-8">
             {bomToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el BOM para ${bomToDelete.sku}?`} onConfirm={() => handleDelete(bomToDelete.sku)} onCancel={() => setBomToDelete(null)} />}
+            
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">Listas de Materiales (BOM)</h2>
                 <button onClick={onCreateNew} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-md"><PlusCircle size={16} />Crear BOM</button>
             </div>
+
+            {/* --- NUEVO: Barra de búsqueda y filtros --- */}
+            <div className="bg-white p-4 rounded-xl shadow-md mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                    <div className="md:col-span-1 flex items-center gap-2">
+                         <input 
+                            type="text" 
+                            value={searchQuery} 
+                            onChange={(e) => setSearchQuery(e.target.value)} 
+                            onKeyPress={(e) => e.key === 'Enter' && fetchBoms()}
+                            placeholder="Buscar por SKU o Nombre..." 
+                            className="p-2 border rounded-md w-full" 
+                        />
+                        <button onClick={fetchBoms} className="p-2 bg-blue-600 text-white rounded-md"><Search size={20}/></button>
+                    </div>
+                    <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border rounded-md">
+                        <option value="">Filtrar por Tipo de Producto</option>
+                        <option value="Producto Terminado">Producto Terminado</option>
+                        <option value="Producto Intermedio">Producto Intermedio</option>
+                    </select>
+                    <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md">
+                        <FilterX size={16}/>Limpiar Filtros
+                    </button>
+                </div>
+            </div>
+
+            {/* --- NUEVO: Barra de acciones masivas --- */}
+            {selectedBoms.length > 0 && (
+                <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-md mb-6 flex justify-between items-center">
+                    <span className="font-semibold">{selectedBoms.length} BOM(s) seleccionado(s)</span>
+                    <div className="flex items-center gap-4">
+                        <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 bg-red-100 rounded-md font-semibold"><Trash2 size={14}/>Eliminar Seleccionados</button>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white p-4 rounded-xl shadow-md">
-                <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                            <th className="p-3">ID (SKU)</th><th className="p-3">Nombre del Producto</th><th className="p-3">Tipo</th><th className="p-3">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {loading ? (<tr><td colSpan="4" className="text-center p-4">Cargando...</td></tr>) :
-                        error ? (<tr><td colSpan="4" className="text-center text-red-500 p-4">{error}</td></tr>) :
-                        (boms.map(bom => (
-                            <tr key={bom.sku} className="border-b hover:bg-gray-50">
-                                <td className="p-3 font-medium">{bom.sku}</td>
-                                <td className="p-3">{bom.name}</td>
-                                <td className="p-3">{bom.item_type}</td>
-                                <td className="p-3 flex gap-3">
-                                    <button onClick={() => onViewTree(bom.sku)} className="text-gray-600 hover:text-gray-800" title="Ver Jerarquía"><GitMerge size={16}/></button>
-                                    <button onClick={() => onEdit(bom.sku)} className="text-blue-600 hover:text-blue-800" title="Editar"><Edit size={16}/></button>
-                                    <button onClick={() => setBomToDelete(bom)} className="text-red-600 hover:text-red-800" title="Eliminar"><Trash2 size={16}/></button>
-                                </td>
+                <div className="overflow-x-auto"> {/* Envoltura para scroll horizontal si es necesario */}
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                {/* --- NUEVO: Checkbox para seleccionar todos --- */}
+                                <th className="p-3 w-4">
+                                    <input 
+                                        type="checkbox"
+                                        onChange={handleSelectAll}
+                                        checked={boms.length > 0 && selectedBoms.length === boms.length}
+                                        disabled={boms.length === 0}
+                                    />
+                                </th>
+                                <th className="p-3">ID (SKU)</th>
+                                <th className="p-3">Nombre del Producto</th>
+                                <th className="p-3">Tipo</th>
+                                <th className="p-3">Acciones</th>
                             </tr>
-                        )))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {loading ? (<tr><td colSpan="5" className="text-center p-4">Cargando...</td></tr>) :
+                            error ? (<tr><td colSpan="5" className="text-center text-red-500 p-4">{error}</td></tr>) :
+                            (boms.map(bom => (
+                                <tr key={bom.sku} className={`border-b hover:bg-gray-50 ${selectedBoms.includes(bom.sku) ? 'bg-blue-50' : ''}`}>
+                                    {/* --- NUEVO: Checkbox por fila --- */}
+                                    <td className="p-3">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedBoms.includes(bom.sku)}
+                                            onChange={() => handleSelectItem(bom.sku)}
+                                        />
+                                    </td>
+                                    <td className="p-3 font-medium">{bom.sku}</td>
+                                    <td className="p-3">{bom.name}</td>
+                                    <td className="p-3">{bom.item_type}</td>
+                                    <td className="p-3 flex gap-3">
+                                        <button onClick={() => onViewTree(bom.sku)} className="text-gray-600 hover:text-gray-800" title="Ver Jerarquía"><GitMerge size={16}/></button>
+                                        <button onClick={() => onEdit(bom.sku)} className="text-blue-600 hover:text-blue-800" title="Editar"><Edit size={16}/></button>
+                                        <button onClick={() => setBomToDelete(bom)} className="text-red-600 hover:text-red-800" title="Eliminar"><Trash2 size={16}/></button>
+                                    </td>
+                                </tr>
+                            )))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
 };
 
-const BOMEditor = ({ allItems, bomSku, onClose, onCreateNewItem }) => {
-    const [parentItem, setParentItem] = useState(null);
+const BOMEditor = ({ allItems, bomSku, onClose }) => {
+    const [parentItemSku, setParentItemSku] = useState(bomSku || null);
     const [components, setComponents] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const availableParents = allItems.filter(item => ['Producto Terminado', 'Producto Intermedio'].includes(item.item_type));
-    const availableComponents = allItems.filter(item => ['Materia Prima', 'Producto Intermedio'].includes(item.item_type));
+    const availableParents = useMemo(() => allItems.filter(item => ['Producto Terminado', 'Producto Intermedio'].includes(item.item_type)), [allItems]);
+    const availableComponents = useMemo(() => allItems.filter(item => ['Materia Prima', 'Producto Intermedio'].includes(item.item_type)), [allItems]);
     
     useEffect(() => {
         const loadBom = async () => {
             if (bomSku) {
-                const parent = allItems.find(i => i.sku === bomSku);
-                setParentItem(parent);
                 try {
                     const response = await fetch(`${API_URL}/boms/${bomSku}`);
                     if (response.ok) {
@@ -829,9 +1098,10 @@ const BOMEditor = ({ allItems, bomSku, onClose, onCreateNewItem }) => {
                     }
                 } catch (error) { console.error("Error cargando BOM:", error); }
             }
+            setLoading(false);
         };
         loadBom();
-    }, [bomSku, allItems]);
+    }, [bomSku]);
 
     const handleAddComponent = () => setComponents([...components, { item_sku: '', quantity: 1 }]);
     
@@ -844,86 +1114,131 @@ const BOMEditor = ({ allItems, bomSku, onClose, onCreateNewItem }) => {
     const handleRemoveComponent = (index) => setComponents(components.filter((_, i) => i !== index));
     
     const handleSave = async () => {
-        if (!parentItem) { alert("Seleccione un producto padre."); return; }
+        if (!parentItemSku) { alert("Seleccione un producto padre."); return; }
         const finalComponents = components
             .filter(c => c.item_sku && c.quantity > 0)
             .map(({ item_sku, quantity }) => ({ item_sku, quantity: parseFloat(quantity) }));
 
-        const bomData = { product_sku: parentItem.sku, components: finalComponents };
+        if (finalComponents.length === 0) {
+            alert("Debe añadir al menos un componente válido.");
+            return;
+        }
+
+        const bomData = { product_sku: parentItemSku, components: finalComponents };
 
         try {
             const response = await fetch(`${API_URL}/boms`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bomData),
             });
             if (!response.ok) throw new Error((await response.json()).detail || 'Error al guardar el BOM.');
-            alert('BOM guardado exitosamente');
             onClose();
         } catch (err) { alert(`Error: ${err.message}`); }
     };
+
+    if (loading) return <div className="p-8">Cargando editor...</div>
 
     return (
         <div className="p-8">
             <h2 className="text-2xl font-bold mb-4">{bomSku ? `Editando BOM para ${bomSku}` : 'Crear Nuevo BOM'}</h2>
             <div className="bg-white p-6 rounded-xl shadow-md">
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">Producto Padre</label>
-                    <div className="flex items-center gap-2">
-                        <select
-                            value={parentItem?.sku || ''}
-                            onChange={(e) => setParentItem(availableParents.find(p => p.sku === e.target.value))}
+                {/* --- SECCIÓN 1: PRODUCTO PADRE (Siempre visible) --- */}
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Producto Padre</label>
+                    <div className="flex items-start gap-2">
+                         <SearchableSelect
+                            options={availableParents}
+                            value={parentItemSku}
+                            onChange={(sku) => setParentItemSku(sku)}
+                            placeholder="Buscar y seleccionar un producto padre..."
                             disabled={!!bomSku}
-                            className="mt-1 block w-full p-2 border rounded-md" >
-                            <option value="">Seleccione un producto...</option>
-                            {availableParents.map(p => <option key={p.sku} value={p.sku}>{p.name} ({p.sku})</option>)}
-                        </select>
-                         {!bomSku && <button onClick={onCreateNewItem} className="mt-1 px-3 py-2 bg-green-500 text-white rounded-md text-sm"><Plus size={16}/></button>}
+                        />
                     </div>
                 </div>
                 
-                <h3 className="text-lg font-semibold mt-6 mb-2">Componentes</h3>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                            <tr><th className="p-2">Componente (SKU)</th><th className="p-2">Cantidad</th><th className="p-2"></th></tr>
-                        </thead>
-                        <tbody>
-                            {components.map((comp, index) => (
-                                <tr key={index} className="border-b">
-                                    <td className="p-2">
-                                        <select value={comp.item_sku} onChange={(e) => handleComponentChange(index, 'item_sku', e.target.value)} className="w-full p-1 border rounded">
-                                            <option value="">Seleccionar...</option>
-                                            {availableComponents.map(item => <option key={item.sku} value={item.sku}>{item.name} ({item.sku})</option>)}
-                                        </select>
-                                    </td>
-                                    <td className="p-2"><input type="number" step="0.01" value={comp.quantity} onChange={(e) => handleComponentChange(index, 'quantity', e.target.value)} className="w-24 p-1 border rounded"/></td>
-                                    <td className="p-2"><button onClick={() => handleRemoveComponent(index)} className="text-red-500"><Trash2 size={16}/></button></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                {/* --- SECCIÓN 2: COMPONENTES (Solo visible si hay un producto padre) --- */}
+                {parentItemSku && (
+                    <>
+                        <h3 className="text-lg font-semibold mt-8 mb-3 border-t pt-4">Componentes</h3>
+                        <div>
+                            <table className="w-full text-sm">
+                                <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th className="p-3 text-left w-2/3">Componente</th>
+                                        <th className="p-3 text-left">Cantidad</th>
+                                        <th className="p-3 text-left">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {components.map((comp, index) => {
+                                        const componentDetails = allItems.find(item => item.sku === comp.item_sku);
+                                        return (
+                                        <tr key={index} className="border-b">
+                                            <td className="p-2 align-top">
+                                                <SearchableSelect
+                                                    options={availableComponents}
+                                                    value={comp.item_sku}
+                                                    onChange={(sku) => handleComponentChange(index, 'item_sku', sku)}
+                                                    placeholder="Buscar y seleccionar un componente..."
+                                                />
+                                            </td>
+                                            <td className="p-2 align-top">
+                                                <div className="flex items-center pt-1">
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0.01"
+                                                        value={comp.quantity} 
+                                                        onChange={(e) => handleComponentChange(index, 'quantity', e.target.value)} 
+                                                        className="w-24 p-2 border rounded-md"
+                                                    />
+                                                    {componentDetails && <span className="ml-3 text-gray-500 text-xs font-semibold">{componentDetails.unit_of_measure}</span>}
+                                                </div>
+                                            </td>
+                                            <td className="p-2 align-top">
+                                                <button onClick={() => handleRemoveComponent(index)} className="text-red-500 hover:text-red-700 p-2 mt-1" title="Eliminar componente">
+                                                    <Trash2 size={16}/>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )})}
+                                </tbody>
+                            </table>
+                        </div>
 
-                <button onClick={handleAddComponent} className="mt-4 flex items-center gap-2 text-sm text-blue-600"><Plus size={16}/>Añadir Fila</button>
+                        <button onClick={handleAddComponent} className="mt-4 flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700">
+                            <PlusCircle size={16}/>Añadir Componente
+                        </button>
+                    </>
+                )}
 
-                <div className="flex justify-end gap-4 mt-6">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Volver a la Lista</button>
-                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded">Guardar BOM</button>
+                {/* --- SECCIÓN 3: BOTONES DE ACCIÓN (Siempre visibles) --- */}
+                <div className="flex justify-end gap-4 mt-8 border-t pt-6">
+                    <button onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-800 font-semibold rounded-md hover:bg-gray-300">Volver a la Lista</button>
+                    <button onClick={handleSave} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Guardar BOM</button>
                 </div>
             </div>
         </div>
     );
 };
 
+
 const BomTreeViewModal = ({ sku, onClose }) => {
     const [treeData, setTreeData] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [flatList, setFlatList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('tree');
+    const [itemSearchQuery, setItemSearchQuery] = useState(''); // Estado para el nuevo buscador
 
     useEffect(() => {
         const fetchTree = async () => {
             try {
                 const response = await fetch(`${API_URL}/boms/tree/${sku}`);
                 if (!response.ok) throw new Error('No se pudo cargar la jerarquía del BOM.');
-                setTreeData(await response.json());
+                const data = await response.json();
+                setTreeData(data.tree);
+                setStats(data.stats);
+                setFlatList(data.flat_list);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -933,30 +1248,129 @@ const BomTreeViewModal = ({ sku, onClose }) => {
         fetchTree();
     }, [sku]);
 
-    const TreeNode = ({ node }) => (
-        <li className="ml-6 mt-2">
-            <div className="flex items-center">
-                <span className="font-semibold">{node.name} ({node.sku})</span>
-                <span className="ml-2 text-gray-600">- {node.quantity} {node.unit_of_measure}</span>
+    const CollapsibleNode = ({ node, level = 0, defaultOpen = false }) => {
+        const [isOpen, setIsOpen] = useState(defaultOpen);
+        const hasChildren = node.children && node.children.length > 0;
+        const typeIcons = {
+            'Producto Terminado': <Package size={14} className="text-blue-500" />,
+            'Producto Intermedio': <Combine size={14} className="text-yellow-500" />,
+            'Materia Prima': <Component size={14} className="text-green-500" />
+        };
+        return (
+            <div style={{ marginLeft: level * 20 }}>
+                <div 
+                    className={`flex items-center p-2 rounded ${hasChildren ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                    onClick={() => hasChildren && setIsOpen(!isOpen)}
+                >
+                    {hasChildren ? <ChevronRight size={16} className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} /> : <div className="w-4"></div>}
+                    <div className="flex items-center gap-2 ml-1">
+                        {typeIcons[node.item_type]}
+                        <span className="font-semibold">{node.name}</span>
+                        <span className="text-gray-500">({node.sku})</span>
+                        <span className="text-sm text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                            {node.quantity} {node.unit_of_measure}
+                        </span>
+                    </div>
+                </div>
+                {isOpen && hasChildren && (
+                    <div className="border-l-2 border-gray-200 pl-2">
+                        {node.children.map(child => <CollapsibleNode key={child.sku} node={child} level={level + 1} />)}
+                    </div>
+                )}
             </div>
-            {node.children && node.children.length > 0 && (
-                <ul className="border-l-2 border-gray-200 pl-4">
-                    {node.children.map(child => <TreeNode key={child.sku} node={child} />)}
-                </ul>
-            )}
-        </li>
-    );
+        );
+    };
+
+    
+    const chartData = stats ? [
+        { name: 'Materias Primas', value: stats.count_raw, color: '#22c55e' },
+        { name: 'P. Intermedios', value: stats.count_intermediate, color: '#f59e0b' },
+        { name: 'P. Terminados', value: stats.count_finished, color: '#3b82f6' }
+    ].filter(d => d.value > 0) : [];
+
+    const unitsData = stats ? Object.entries(stats.units_of_measure).map(([name, value]) => ({ name, value })) : [];
 
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl">
+            <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-4xl">
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Jerarquía de BOM: {sku}</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">Jerarquía y Desglose de BOM: {sku}</h2>
                     <button onClick={onClose}><X size={24} /></button>
                 </div>
-                <div className="max-h-[60vh] overflow-y-auto">
+                <div className="max-h-[75vh] overflow-y-auto pr-4">
                     {loading ? <p>Cargando...</p> : 
-                     treeData ? <ul><TreeNode node={treeData} /></ul> : <p>No se encontró información.</p>}
+                     (stats && treeData) ? (
+                        <div>
+                            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                                <h3 className="text-lg font-semibold mb-4 text-gray-700">Resumen del Desglose</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+                                    <div className="bg-white p-3 rounded-md shadow-sm"><p className="text-2xl font-bold text-blue-600">{stats.total_unique_items}</p><p className="text-sm text-gray-500">Ítems Únicos</p></div>
+                                    <div className="bg-white p-3 rounded-md shadow-sm"><p className="text-2xl font-bold text-green-600">{stats.count_raw}</p><p className="text-sm text-gray-500">Materias Primas</p></div>
+                                    <div className="bg-white p-3 rounded-md shadow-sm"><p className="text-2xl font-bold text-yellow-600">{stats.count_intermediate}</p><p className="text-sm text-gray-500">P. Intermedios</p></div>
+                                    <div className="bg-white p-3 rounded-md shadow-sm"><p className="text-2xl font-bold text-gray-600">{Object.keys(stats.units_of_measure).length}</p><p className="text-sm text-gray-500">Tipos de Unidades</p></div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 items-center">
+                                    <div>
+                                        <h4 className="font-semibold text-center text-sm mb-2">Composición por Tipo de Ítem</h4>
+                                        <ResponsiveContainer width="100%" height={200}>
+                                            <PieChart>
+                                                <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} label>
+                                                    {chartData.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.color} />)}
+                                                </Pie>
+                                                <Tooltip />
+                                                <Legend iconSize={10} />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-center text-sm mb-2">Ítems por Unidad de Medida</h4>
+                                        <ResponsiveContainer width="100%" height={180}>
+                                             <BarChart data={unitsData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis type="number" allowDecimals={false} />
+                                                <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
+                                                <Tooltip formatter={(value) => [value, 'Cantidad']}/>
+                                                <Bar dataKey="value" fill="#8884d8" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-b border-gray-200 mb-4">
+                                <nav className="-mb-px flex space-x-6">
+                                    <button 
+                                        onClick={() => setActiveTab('tree')}
+                                        className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'tree' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                    >
+                                        Árbol de Jerarquía
+                                    </button>
+                                    <button 
+                                        onClick={() => setActiveTab('items')}
+                                        className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'items' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                    >
+                                        Lista de Ítems Requeridos
+                                    </button>
+                                </nav>
+                            </div>
+                            
+                            {/* --- EL CONTENIDO AHORA SE MUESTRA AQUÍ, EVITANDO LA DUPLICACIÓN --- */}
+                            <div>
+                                {activeTab === 'tree' && (
+                                    <div className="border rounded-lg p-2 bg-white">
+                                        <CollapsibleNode node={treeData} defaultOpen={true} />
+                                    </div>
+                                )}
+                                {activeTab === 'items' && (
+                                    <ItemsTable 
+                                        flatList={flatList} 
+                                        itemSearchQuery={itemSearchQuery} 
+                                        setItemSearchQuery={setItemSearchQuery} 
+                                    />
+                                )}
+                            </div>
+                        </div>
+                     ) : <p>No se encontró información para el desglose.</p>}
                 </div>
             </div>
         </div>
