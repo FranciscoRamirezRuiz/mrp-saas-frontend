@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle, Warehouse, Menu, ChevronDown, AlertTriangle, PlusCircle, ChevronRight, Component, Combine, Sliders } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, X, Edit, Trash2, Search, FileDown, Upload, GitMerge, Plus, LineChart as LineChartIcon, HelpCircle, ArrowUpDown, FilterX, CheckCircle, Warehouse, Menu, ChevronDown, AlertTriangle, PlusCircle, ChevronRight, Component, Combine, Sliders, ChevronsRight, ShoppingBag, Box } from 'lucide-react';
 import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, LineChart } from 'recharts';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
@@ -143,22 +143,17 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar
     );
 };
 
-const formatDate = (dateString) => {
+const formatDate = (dateString, options = { year: 'numeric', month: 'short', day: 'numeric' }) => {
     try {
-        const date = new Date(dateString + 'T00:00:00');
-        if (isNaN(date.getTime())) {
-             const datetime = new Date(dateString);
-             return datetime.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+        const date = new Date(dateString);
+        // Check if dateString has time info. If not, add timezone offset to avoid date changes.
+        if (dateString.length <= 10) {
+            date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
         }
-        return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch { 
-        if (typeof dateString === 'string') {
-            const parts = dateString.split('T')[0].split('-');
-            if (parts.length === 3) {
-                 return `${parts[2]}/${parts[1]}`
-            }
-        }
-        return dateString; 
+        if (isNaN(date.getTime())) return dateString;
+        return date.toLocaleDateString('es-ES', options);
+    } catch {
+        return dateString;
     }
 };
 
@@ -576,7 +571,6 @@ const FileUploadModal = ({ onClose, fetchItems }) => {
                     <button onClick={onClose}><X size={24} className="text-gray-500 hover:text-red-500"/></button>
                 </div>
                 <div className="space-y-4">
-                    {/* --- MODIFICADO: Actualizar texto de ayuda para importación --- */}
                     <p className="text-sm text-gray-600">
                         Sube un archivo CSV con las columnas requeridas: sku, name, category, in_stock, item_type.
                         Opcionalmente, incluye 'Lead Time de Compra' y/o 'Lead Time de Fabricación'.
@@ -748,7 +742,6 @@ const ItemsView = () => {
     const [locations, setLocations] = useState([]);
     const [units, setUnits] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-    // --- MODIFICADO: Estado para el modal de confirmación de eliminación masiva ---
     const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
 
 
@@ -859,7 +852,6 @@ const ItemsView = () => {
         );
     };
     
-    // --- MODIFICADO: Separar la lógica de confirmación y ejecución de la eliminación masiva ---
     const handleBulkDelete = () => {
         setIsBulkDeleteConfirmOpen(true);
     };
@@ -955,7 +947,6 @@ const ItemsView = () => {
         </th>
     );
 
-    // --- MODIFICADO: Añadir nuevos lead times a las cabeceras de exportación ---
     const exportHeaders = [
         { label: "SKU", key: "sku" }, { label: "Nombre", key: "name" }, { label: "Categoría", key: "category" },
         { label: "En Stock", key: "in_stock" }, { label: "Unidad", key: "unit_of_measure" }, { label: "Ubicación", key: "location" },
@@ -980,7 +971,6 @@ const ItemsView = () => {
             {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} fetchItems={fetchItems} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
             {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedItems={selectedItemsObjects} />}
-            {/* --- MODIFICADO: Renderizar el modal de confirmación --- */}
             {isBulkDeleteConfirmOpen && (
                 <ConfirmationModal
                     message={`¿Seguro que quieres eliminar los ${selectedSkus.length} ítems seleccionados? Esta acción no se puede deshacer.`}
@@ -1840,7 +1830,7 @@ const PredictionView = ({ results, setResults }) => {
             
             const formattedForecast = data.forecast.map(d => ({ ...d, ds: new Date(d.ds) }));
             const combinedData = [
-                ...sales.map(s => ({ ds: new Date(s.ds + 'T00:00:00'), historico: s.y })),
+                ...sales.map(s => ({ ds: new Date(s.ds), historico: s.y })),
                 ...formattedForecast.map(f => ({
                     ds: f.ds, pronostico: f.yhat > 0 ? f.yhat : 0,
                     min: f.yhat_lower > 0 ? f.yhat_lower : 0, max: f.yhat_upper > 0 ? f.yhat_upper : 0
@@ -2331,6 +2321,120 @@ const PMPView = ({ results, setResults }) => {
     );
 };
 
+// --- VISTA PLAN DE REQUERIMIENTO DE MATERIALES (MRP) --- (NUEVO)
+
+const MRPView = ({ pmpResults }) => {
+    const [mrpData, setMrpData] = useState([]);
+    const [loadingSku, setLoadingSku] = useState(null);
+    const [error, setError] = useState('');
+
+    const handleCalculateMRP = async (pmp) => {
+        setLoadingSku(pmp.id);
+        setError('');
+        try {
+            const payload = { table: pmp.table };
+            const response = await fetch(`${API_URL}/mrp/timeline/${pmp.sku}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || `Error al calcular el MRP para ${pmp.sku}`);
+            }
+            const data = await response.json();
+            
+            setMrpData(prev => {
+                const existingIndex = prev.findIndex(item => item.product_sku === data.product_sku);
+                if (existingIndex > -1) {
+                    const updatedData = [...prev];
+                    updatedData[existingIndex] = data;
+                    return updatedData;
+                }
+                return [...prev, data];
+            });
+
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoadingSku(null);
+        }
+    };
+    
+    const handleCloseMrp = (sku) => {
+        setMrpData(prev => prev.filter(item => item.product_sku !== sku));
+    };
+
+    return (
+        <div className="p-8 space-y-8">
+            <Card title="1. Seleccionar Plan Maestro de Producción para MRP">
+                {pmpResults.length === 0 ? (
+                    <div className="text-center p-4 bg-yellow-50 text-yellow-800 rounded-lg">
+                        <p>No hay Planes Maestros de Producción (PMP) generados.</p>
+                        <p className="mt-2 text-sm">Por favor, ve al módulo de <strong>Plan Maestro</strong> para crear uno primero.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {pmpResults.map(pmp => (
+                            <div key={pmp.id} className="bg-gray-50 border border-gray-200 p-4 rounded-lg shadow-sm">
+                                <h4 className="font-bold text-gray-800">{pmp.productName}</h4>
+                                <p className="text-sm text-gray-500 mb-4">{pmp.sku}</p>
+                                <button
+                                    onClick={() => handleCalculateMRP(pmp)}
+                                    disabled={loadingSku === pmp.id}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-400 hover:bg-indigo-700"
+                                >
+                                    <ChevronsRight size={16}/>
+                                    {loadingSku === pmp.id ? 'Calculando...' : 'Calcular Requerimiento de Materiales'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {error && <p className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-lg"><AlertTriangle size={16} className="inline mr-2"/>{error}</p>}
+            </Card>
+
+            {mrpData.map(mrp => (
+                <Card key={mrp.product_sku} title={`2. Cronograma de Requerimientos para ${mrp.product_name}`}>
+                     <button onClick={() => handleCloseMrp(mrp.product_sku)} className="absolute top-4 right-4 p-2 text-sm font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600" title="Cerrar Plan">
+                        <X size={16}/>
+                    </button>
+                    {mrp.timeline.length === 0 ? (
+                        <p className="text-center text-gray-500">No se encontraron requerimientos de materiales para las producciones planificadas.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-sm text-left">
+                               <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                   <tr>
+                                       <th className="p-3">Materia Prima (SKU)</th>
+                                       <th className="p-3 text-right">Cantidad Requerida</th>
+                                       <th className="p-3">Fecha de Orden de Compra</th>
+                                       <th className="p-3">Fecha de Recepción Requerida</th>
+                                       <th className="p-3">Para Producción del</th>
+                                       <th className="p-3 text-center">Lead Time Total</th>
+                                   </tr>
+                               </thead>
+                               <tbody>
+                                   {mrp.timeline.map((item, index) => (
+                                       <tr key={`${item.sku}-${index}`} className="border-b hover:bg-gray-50">
+                                           <td className="p-3 font-medium text-gray-900">{item.name} ({item.sku})</td>
+                                           <td className="p-3 text-right font-semibold text-indigo-600">{item.required_quantity} {item.unit_of_measure}</td>
+                                           <td className="p-3 font-bold text-red-600">{formatDate(item.order_by_date)}</td>
+                                           <td className="p-3 text-green-700">{formatDate(item.required_by_date)}</td>
+                                           <td className="p-3">{formatDate(item.production_start_date)}</td>
+                                           <td className="p-3 text-center">{item.total_lead_time} días</td>
+                                       </tr>
+                                   ))}
+                               </tbody>
+                           </table>
+                        </div>
+                    )}
+                </Card>
+            ))}
+        </div>
+    );
+};
+
 
 // --- ESTRUCTURA PRINCIPAL, HEADER Y APP ---
 
@@ -2339,21 +2443,35 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const menuRef = useRef(null);
 
     const navItems = [
-        { name: 'Dashboard', icon: Home, view: 'dashboard' }, { name: 'Gestión de Ítems', icon: Package, view: 'items' }, { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
-        { name: 'Predicción', icon: BrainCircuit, view: 'prediction' }, { name: 'Plan Maestro', icon: Calendar, view: 'pmp' }, { name: 'Plan de Materiales', icon: ShoppingCart, view: 'mrp' },
+        { name: 'Dashboard', icon: Home, view: 'dashboard' }, 
+        { name: 'Gestión de Ítems', icon: Package, view: 'items' }, 
+        { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
+        { name: 'Predicción', icon: BrainCircuit, view: 'prediction' }, 
+        { name: 'Plan Maestro', icon: Calendar, view: 'pmp' }, 
+        { 
+            name: 'Plan de Requerimientos', icon: ShoppingCart, subItems: [
+                { name: 'Requerimiento de Materiales', icon: ShoppingBag, view: 'mrp_materials' },
+                { name: 'Req. Productos Intermedios', icon: Box, view: 'mrp_products' },
+            ]
+        },
         { name: 'Configuración', icon: Settings, view: 'settings' },
     ];
-
+    
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
-        'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 'mrp': 'Plan de Requerimiento de Materiales', 
+        'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 
+        'mrp_materials': 'Plan de Requerimiento de Materiales', 'mrp_products': 'Plan de Requerimiento de Productos',
         'settings': 'Configuración'
     }[view] || 'Dashboard');
 
 
     const handleNavClick = (view) => {
         setActiveView(view);
-        setIsMenuOpen(false);
+        // Do not close menu if it's a main item with sub-items
+        const mainItem = navItems.find(item => item.view === view || (item.subItems && item.subItems.some(sub => sub.view === view)));
+        if (!mainItem.subItems) {
+            setIsMenuOpen(false);
+        }
     };
 
     useEffect(() => {
@@ -2388,19 +2506,30 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
                         <span className="hidden sm:block text-sm font-semibold">Menú</span>
                     </button>
                     {isMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-2xl py-2 z-30">
-                            <p className="text-gray-900 font-bold px-4 py-2 border-b">Navegación</p>
+                        <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-2xl py-2 z-30">
                             {navItems.map((item) => (
-                                <button
-                                    key={item.view}
-                                    onClick={() => handleNavClick(item.view)}
-                                    className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${
-                                        activeView === item.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100'
-                                    }`}
-                                >
-                                    <item.icon className="h-4 w-4 mr-3" />
-                                    {item.name}
-                                </button>
+                                !item.subItems ? (
+                                    <button
+                                        key={item.view} onClick={() => handleNavClick(item.view)}
+                                        className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ activeView === item.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                    >
+                                        <item.icon className="h-4 w-4 mr-3" /> {item.name}
+                                    </button>
+                                ) : (
+                                    <div key={item.name} className="border-t">
+                                        <p className="flex items-center px-4 py-3 text-sm text-gray-500 font-semibold">
+                                            <item.icon className="h-4 w-4 mr-3" /> {item.name}
+                                        </p>
+                                        {item.subItems.map(subItem => (
+                                            <button
+                                                key={subItem.view} onClick={() => handleNavClick(subItem.view)}
+                                                className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ activeView === subItem.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                            >
+                                                <subItem.icon className="h-4 w-4 mr-3" /> {subItem.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )
                             ))}
                         </div>
                     )}
@@ -2419,7 +2548,8 @@ function App() {
 
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
-        'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 'mrp': 'Plan de Requerimiento de Materiales', 
+        'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 
+        'mrp_materials': 'Plan de Requerimiento de Materiales', 'mrp_products': 'Plan de Requerimiento de Productos',
         'settings': 'Configuración'
     }[view] || 'Dashboard');
 
@@ -2435,8 +2565,9 @@ function App() {
             case 'bom': return <BOMView />; 
             case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
             case 'pmp': return <PMPView results={pmpResults} setResults={setPmpResults} />;
+            case 'mrp_materials': return <MRPView pmpResults={pmpResults} />;
+            case 'mrp_products': return <PlaceholderView title={getTitle(activeView)} />;
             case 'settings': return <SettingsView />;
-            case 'mrp': return <PlaceholderView title={getTitle(activeView)} />;
             default: return <PlaceholderView title={getTitle(activeView)} />;
         }
     };
