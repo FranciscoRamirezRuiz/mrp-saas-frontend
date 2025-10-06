@@ -1,6 +1,6 @@
 // src/components/views/BOMView.js
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, Edit, Trash2, Search, FileDown, Upload, GitMerge, PlusCircle, FilterX, AlertTriangle, Package, Combine, Component, ChevronRight } from 'lucide-react';
+import { X, Edit, Trash2, Search, FileDown, Upload, GitMerge, PlusCircle, FilterX, Package, Combine, Component, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import Card from '../common/Card';
 import ConfirmationModal from '../common/ConfirmationModal';
@@ -68,6 +68,8 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
     
     const [importMessage, setImportMessage] = useState('');
     const [importError, setImportError] = useState('');
+    const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+
 
     const fetchBoms = useCallback(async () => {
         setLoading(true);
@@ -121,22 +123,26 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
         );
     };
 
-    const handleBulkDelete = async () => {
-        if (window.confirm(`¿Seguro que quieres eliminar ${selectedBoms.length} BOM(s) seleccionado(s)?`)) {
-            try {
-                const response = await fetch(`${API_URL}/boms/bulk-delete`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ skus: selectedBoms })
-                });
-                if (!response.ok && response.status !== 204) {
-                    throw new Error('Error en la eliminación masiva.');
-                }
-                setSelectedBoms([]);
-                fetchBoms();
-            } catch (err) {
-                setImportError(err.message);
+    const handleBulkDelete = () => {
+        setIsBulkDeleteConfirmOpen(true);
+    };
+
+    const executeBulkDelete = async () => {
+        try {
+            const response = await fetch(`${API_URL}/boms/bulk-delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ skus: selectedBoms })
+            });
+            if (!response.ok && response.status !== 204) {
+                throw new Error('Error en la eliminación masiva.');
             }
+            setSelectedBoms([]);
+            fetchBoms();
+        } catch (err) {
+            setImportError(err.message);
+        } finally {
+            setIsBulkDeleteConfirmOpen(false);
         }
     };
     
@@ -180,7 +186,13 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
     return (
         <Card title="Listas de Materiales (BOM)">
             {bomToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el BOM para ${bomToDelete.sku}?`} onConfirm={() => handleDelete(bomToDelete.sku)} onCancel={() => setBomToDelete(null)} />}
-            
+            {isBulkDeleteConfirmOpen && (
+                <ConfirmationModal
+                    message={`¿Seguro que quieres eliminar los ${selectedBoms.length} BOM(s) seleccionados? Esta acción no se puede deshacer.`}
+                    onConfirm={executeBulkDelete}
+                    onCancel={() => setIsBulkDeleteConfirmOpen(false)}
+                />
+            )}
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                  <div className="md:col-span-1 flex items-center gap-2 w-full md:w-auto">
                      <input 

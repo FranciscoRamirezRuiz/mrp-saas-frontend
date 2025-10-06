@@ -56,7 +56,7 @@ const MRPView = ({ pmpResults }) => {
 
             const chartData = pmp.table.map(pmpPeriod => ({
                 period: pmpPeriod.period.replace('Semana ', 'S').replace(', ', '-'),
-                "Demanda Proyectada": pmpPeriod.gross_requirements,
+                "Venta Proyectada": pmpPeriod.gross_requirements,
                 "Órdenes de Compra": requirementsByPeriod[pmpPeriod.period] || 0
             }));
             // --- FIN ---
@@ -120,7 +120,7 @@ const MRPView = ({ pmpResults }) => {
                     </button>
 
                     <div className="mb-8">
-                        <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico Comparativo: Demanda vs. Órdenes de Compra</h4>
+                        <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico Comparativo: Venta vs. Órdenes de Compra</h4>
                         <ResponsiveContainer width="100%" height={250}>
                              <ComposedChart data={mrp.chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -129,7 +129,7 @@ const MRPView = ({ pmpResults }) => {
                                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" allowDecimals={false} />
                                 <Tooltip />
                                 <Legend />
-                                <Bar yAxisId="left" dataKey="Demanda Proyectada" barSize={20} fill="#8884d8" />
+                                <Bar yAxisId="left" dataKey="Venta Proyectada" barSize={20} fill="#8884d8" />
                                 <Line yAxisId="right" type="monotone" dataKey="Órdenes de Compra" stroke="#82ca9d" strokeWidth={2} />
                             </ComposedChart>
                         </ResponsiveContainer>

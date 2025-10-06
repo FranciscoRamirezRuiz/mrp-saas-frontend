@@ -1,16 +1,17 @@
 // src/components/Header.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, X, ShoppingBag, Box } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ShoppingBag, Box, ChevronDown } from 'lucide-react';
 
 const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [openSubMenu, setOpenSubMenu] = useState(null); // To track which submenu is open
     const menuRef = useRef(null);
 
     const navItems = [
         { name: 'Dashboard', icon: Home, view: 'dashboard' }, 
         { name: 'Gestión de Ítems', icon: Package, view: 'items' }, 
         { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
-        { name: 'Predicción', icon: BrainCircuit, view: 'prediction' }, 
+        { name: 'Predicción de Ventas', icon: BrainCircuit, view: 'prediction' }, 
         { name: 'Plan Maestro', icon: Calendar, view: 'pmp' }, 
         { 
             name: 'Plan de Requerimientos', icon: ShoppingCart, subItems: [
@@ -23,23 +24,27 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
     
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
-        'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 
+        'prediction': 'Predicción de Ventas', 'pmp': 'Plan Maestro de Producción', 
         'mrp_materials': 'Plan de Requerimiento de Materiales', 'mrp_products': 'Plan de Requerimiento de Productos',
         'settings': 'Configuración'
     }[view] || 'Dashboard');
 
     const handleNavClick = (view) => {
         setActiveView(view);
-        const mainItem = navItems.find(item => item.view === view || (item.subItems && item.subItems.some(sub => sub.view === view)));
-        if (!mainItem.subItems) {
-            setIsMenuOpen(false);
-        }
+        setIsMenuOpen(false); // Always close the main menu on any selection
+        setOpenSubMenu(null); // Reset submenu state as well
     };
+
+    const handleSubMenuToggle = (itemName) => {
+        setOpenSubMenu(openSubMenu === itemName ? null : itemName);
+    };
+
 
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setIsMenuOpen(false);
+                setOpenSubMenu(null);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -72,24 +77,34 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
                             {navItems.map((item) => (
                                 !item.subItems ? (
                                     <button
-                                        key={item.view} onClick={() => handleNavClick(item.view)}
+                                        key={item.name} onClick={() => handleNavClick(item.view)}
                                         className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ activeView === item.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
                                     >
                                         <item.icon className="h-4 w-4 mr-3" /> {item.name}
                                     </button>
                                 ) : (
                                     <div key={item.name} className="border-t">
-                                        <p className="flex items-center px-4 py-3 text-sm text-gray-500 font-semibold">
-                                            <item.icon className="h-4 w-4 mr-3" /> {item.name}
-                                        </p>
-                                        {item.subItems.map(subItem => (
-                                            <button
-                                                key={subItem.view} onClick={() => handleNavClick(subItem.view)}
-                                                className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ activeView === subItem.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
-                                            >
-                                                <subItem.icon className="h-4 w-4 mr-3" /> {subItem.name}
-                                            </button>
-                                        ))}
+                                        <button
+                                            onClick={() => handleSubMenuToggle(item.name)}
+                                            className="w-full text-left flex items-center justify-between px-4 py-3 text-sm text-gray-700 font-semibold hover:bg-gray-100"
+                                        >
+                                            <div className="flex items-center">
+                                                <item.icon className="h-4 w-4 mr-3" /> {item.name}
+                                            </div>
+                                            <ChevronDown size={16} className={`transition-transform ${openSubMenu === item.name ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openSubMenu === item.name && (
+                                            <div>
+                                                {item.subItems.map(subItem => (
+                                                    <button
+                                                        key={subItem.view} onClick={() => handleNavClick(subItem.view)}
+                                                        className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ activeView === subItem.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                                    >
+                                                        <subItem.icon className="h-4 w-4 mr-3" /> {subItem.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             ))}

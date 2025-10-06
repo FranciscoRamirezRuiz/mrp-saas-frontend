@@ -240,7 +240,7 @@ const PredictionView = ({ results, setResults }) => {
                 {error && <div className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-lg whitespace-pre-wrap"><AlertTriangle size={16} className="inline mr-2"/>{error}</div>}
             </Card>
             
-            <Card title="2. Generar Pronóstico de Demanda">
+            <Card title="2. Generar Pronóstico de Ventas">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                      <div className="col-span-1 md:col-span-3 lg:col-span-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Producto</label>
@@ -392,12 +392,12 @@ const PredictionView = ({ results, setResults }) => {
                     )}
                     
                     {activeForecast.demandSummary && (
-                        <Card title={`Resumen de Demanda Semanal para ${activeForecast.productName}`}>
+                        <Card title={`Resumen de Ventas Semanal para ${activeForecast.productName}`}>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                                         <tr>
-                                            <th className="p-3">Periodo</th><th className="p-3">Fecha de Inicio</th><th className="p-3">Fecha de Fin</th><th className="p-3 text-right">Demanda Pronosticada</th>
+                                            <th className="p-3">Periodo</th><th className="p-3">Fecha de Inicio</th><th className="p-3">Fecha de Fin</th><th className="p-3 text-right">Venta Pronosticada</th>
                                         </tr>
                                     </thead>
                                     <tbody>

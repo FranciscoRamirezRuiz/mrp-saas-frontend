@@ -23,7 +23,7 @@ const ItemModal = ({ item, onClose, onSave }) => {
     }, []);
 
     const handleChange = (e) => {
-        const { name, value, type } = e.target;
+        const { name, value } = e.target;
         const isNumeric = ['reorder_point', 'lead_time_compra', 'lead_time_fabricacion', 'stock_de_seguridad', 'tamano_lote_fijo'].includes(name);
         const finalValue = isNumeric ? parseInt(value, 10) || 0 : value;
         setFormData(prev => ({ ...prev, [name]: finalValue }));

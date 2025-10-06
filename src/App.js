@@ -19,7 +19,7 @@ function App() {
 
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
-        'prediction': 'Predicción de Demanda', 'pmp': 'Plan Maestro de Producción', 
+        'prediction': 'Predicción de Ventas', 'pmp': 'Plan Maestro de Producción', 
         'mrp_materials': 'Plan de Requerimiento de Materiales', 'mrp_products': 'Plan de Requerimiento de Productos',
         'settings': 'Configuración'
     }[view] || 'Dashboard');

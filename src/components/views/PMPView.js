@@ -134,7 +134,7 @@ const PMPView = ({ results, setResults }) => {
                     </div>
 
                     <div className="mb-8">
-                        <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Demanda vs. Producción</h4>
+                        <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Venta vs. Producción</h4>
                         <ResponsiveContainer width="100%" height={250}>
                              <ComposedChart data={pmp.table} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -142,7 +142,7 @@ const PMPView = ({ results, setResults }) => {
                                 <YAxis />
                                 <Tooltip />
                                 <Legend />
-                                <Bar dataKey="gross_requirements" name="Demanda Pronosticada" barSize={20} fill="#8884d8" />
+                                <Bar dataKey="gross_requirements" name="Venta Pronosticada" barSize={20} fill="#8884d8" />
                                 <Line type="monotone" dataKey="planned_production_receipt" name="Producción Planificada" stroke="#82ca9d" strokeWidth={2} />
                             </ComposedChart>
                         </ResponsiveContainer>
@@ -168,7 +168,7 @@ const PMPView = ({ results, setResults }) => {
                                 </tr>
                                 <tr className="border-b">
                                      <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
-                                         Pronóstico de Demanda
+                                         Pronóstico de Venta
                                           <TooltipHelper text="Necesidades brutas según el pronóstico de ventas."><HelpCircle size={14} className="text-gray-400 cursor-pointer"/></TooltipHelper>
                                      </td>
                                      {pmp.table.map((period, index) => <td key={index} className="p-3 border border-gray-200 text-center">{period.gross_requirements}</td>)}
