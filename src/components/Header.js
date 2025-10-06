@@ -1,6 +1,6 @@
 // src/components/Header.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ShoppingBag, Box, ChevronDown } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, X, ShoppingBag, Box, ChevronDown } from 'lucide-react';
 
 const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,8 +10,8 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const navItems = [
         { name: 'Dashboard', icon: Home, view: 'dashboard' }, 
         { name: 'Gestión de Ítems', icon: Package, view: 'items' }, 
-        { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
         { name: 'Predicción de Ventas', icon: BrainCircuit, view: 'prediction' }, 
+        { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
         { name: 'Plan Maestro', icon: Calendar, view: 'pmp' }, 
         { 
             name: 'Plan de Requerimientos', icon: ShoppingCart, subItems: [

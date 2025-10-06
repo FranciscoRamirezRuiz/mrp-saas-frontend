@@ -207,7 +207,7 @@ const PredictionView = ({ results, setResults }) => {
 
     return (
         <div className="p-8 space-y-8">
-            <Card title="1. Cargar y Mapear Historial de Ventas">
+            <Card title="1. Cargar y Ver Historial de Ventas">
                 <div className="flex items-center gap-4 mb-4">
                     <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"/>
                 </div>
