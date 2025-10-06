@@ -31,7 +31,7 @@ function App() {
 
     const renderContent = () => {
         switch (activeView) {
-            case 'dashboard': return <DashboardView />;
+            case 'dashboard': return <DashboardView predictionResults={predictionResults} />; // <-- MODIFICACIÓN AQUÍ
             case 'items': return <ItemsView />; 
             case 'bom': return <BOMView />; 
             case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
