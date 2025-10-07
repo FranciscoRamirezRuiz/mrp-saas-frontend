@@ -1,4 +1,3 @@
-// src/components/views/ItemsView.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Edit, Trash2, Search, FileDown, Upload, ArrowUpDown, FilterX } from 'lucide-react';
 import { CSVLink } from 'react-csv';
@@ -34,7 +33,6 @@ const ItemsView = () => {
     const [units, setUnits] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
-
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -92,7 +90,6 @@ const ItemsView = () => {
     const handleUpdateItem = async (itemData) => {
         try {
             const { sku, name, category, in_stock, item_type, status, ...fieldsToUpdate } = itemData;
-
             const response = await fetch(`${API_URL}/items/${itemData.sku}`, { 
                 method: 'PUT', 
                 headers: { 'Content-Type': 'application/json' }, 
@@ -103,22 +100,25 @@ const ItemsView = () => {
             fetchItems();
         } catch (err) { alert(`Error: ${err.message}`); }
     };
-    
+
     const handleStatusChange = (item, newStatus) => {
         const updatePayload = { status: newStatus };
-        
-        fetch(`${API_URL}/items/${item.sku}`, { 
-            method: 'PUT', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify(updatePayload) 
+        fetch(`${API_URL}/items/${item.sku}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatePayload)
         })
         .then(response => {
             if (!response.ok) throw new Error('Error al actualizar estado.');
-            fetchItems();
+            // Optimistic update to feel faster
+            setItems(prevItems => prevItems.map(i => i.sku === item.sku ? { ...i, status: newStatus } : i));
         })
-        .catch(err => alert(`Error: ${err.message}`));
+        .catch(err => {
+            alert(`Error: ${err.message}`);
+            fetchItems(); // Revert on error
+        });
     };
-
+    
     const handleDeleteItem = async (sku) => {
         try {
             const response = await fetch(`${API_URL}/items/${sku}`, { method: 'DELETE' });
@@ -211,8 +211,8 @@ const ItemsView = () => {
         let sortableItems = [...items];
         if (sortConfig.key !== null) {
             sortableItems.sort((a, b) => {
-                const valA = a[sortConfig.key] || '';
-                const valB = b[sortConfig.key] || '';
+                const valA = a[sortConfig.key] ?? '';
+                const valB = b[sortConfig.key] ?? '';
                 if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
                 if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
                 return 0;
@@ -230,10 +230,10 @@ const ItemsView = () => {
     };
 
     const SortableHeader = ({ children, sortKey }) => (
-        <th className="p-3 cursor-pointer hover:bg-gray-100" onClick={() => requestSort(sortKey)}>
+        <th className="p-3 cursor-pointer hover:bg-gray-200 text-left border-b border-r border-gray-200" onClick={() => requestSort(sortKey)}>
             <div className="flex items-center gap-1">
                 {children}
-                <ArrowUpDown size={14} className={sortConfig.key === sortKey ? 'text-gray-800' : 'text-gray-300'} />
+                <ArrowUpDown size={14} className={sortConfig.key === sortKey ? 'text-gray-800' : 'text-gray-400'} />
             </div>
         </th>
     );
@@ -271,100 +271,105 @@ const ItemsView = () => {
             )}
 
             <Card title="Gestión de Ítems e Inventario">
+                {/* Barra de Búsqueda y Acciones */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div className="flex items-center gap-2 w-full md:w-1/3">
-                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems()} placeholder="Buscar por SKU o Nombre..." className="p-2 border rounded-lg w-full" />
+                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems()} placeholder="Buscar por SKU o Nombre..." className="p-2 border border-slate-600 bg-white text-gray-800 rounded-lg w-full" />
                         <button onClick={() => fetchItems()} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Search size={20}/></button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={handlePdfExport} className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-100"><FileDown size={16}/>PDF</button>
-                        <CSVLink data={items} headers={exportHeaders} filename={"inventario.csv"} className="flex items-center gap-2 p-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-100"><FileDown size={16}/>CSV</CSVLink>
+                        <button onClick={handlePdfExport} className="flex items-center gap-2 p-2 border border-slate-600 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-600"><FileDown size={16}/>PDF</button>
+                        <CSVLink data={items} headers={exportHeaders} filename={"inventario.csv"} className="flex items-center gap-2 p-2 border border-slate-600 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-600"><FileDown size={16}/>CSV</CSVLink>
                         <button onClick={() => setIsFileModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700">
                             <Upload size={16}/>Importar Ítems
                         </button>
                     </div>
                 </div>
-                
-                <div className="bg-gray-50 p-4 rounded-xl shadow-inner mb-6">
+
+                {/* Filtros */}
+                <div className="bg-white/10 p-4 rounded-xl shadow-inner mb-6">
                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
-                        <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border rounded-lg">
+                        <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
                             <option value="">Filtrar por Estado</option>
                             <option value="Activo">Activo</option>
                             <option value="Inactivo">Inactivo</option>
                             <option value="Obsoleto">Obsoleto</option>
                         </select>
-                        <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border rounded-lg">
+                        <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
                             <option value="">Filtrar por Tipo</option>
                             <option value="Materia Prima">Materia Prima</option>
                             <option value="Producto Intermedio">Producto Intermedio</option>
                             <option value="Producto Terminado">Producto Terminado</option>
                         </select>
-                        <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border rounded-lg">
+                        <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
                             <option value="">Unidad de Medida</option>
                             {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
                         </select>
-                        <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border rounded-lg">
+                        <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
                             <option value="">Ubicación</option>
                             {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                         </select>
                         <div className="flex items-center">
-                            <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
-                            <label htmlFor="critical_stock" className="ml-2 block text-sm text-gray-900">Stock Crítico</label>
+                            <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-indigo-500 border-slate-600 bg-slate-700 rounded focus:ring-indigo-500" />
+                            <label htmlFor="critical_stock" className="ml-2 block text-sm text-slate-300">Stock Crítico</label>
                         </div>
-                         <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
+                         <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-white bg-slate-600 rounded-lg hover:bg-slate-500">
                             <FilterX size={16}/>Limpiar Filtros
                         </button>
                     </div>
                 </div>
 
+                {/* Acciones en Lote */}
                 {selectedSkus.length > 0 && (
-                    <div className="bg-blue-100 border border-blue-300 text-blue-800 p-3 rounded-lg mb-6 flex justify-between items-center">
+                    <div className="bg-indigo-900/50 border border-indigo-700 text-indigo-200 p-3 rounded-lg mb-6 flex justify-between items-center">
                         <span className="font-semibold">{selectedSkus.length} ítem(s) seleccionado(s)</span>
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setIsBulkEditModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm text-blue-800 bg-blue-200 rounded-lg font-semibold hover:bg-blue-300"><Edit size={14}/>Editar Seleccionados</button>
-                            <div className="border-l h-6 border-blue-300"></div>
+                            <button onClick={() => setIsBulkEditModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm text-indigo-200 bg-indigo-700/50 rounded-lg font-semibold hover:bg-indigo-700"><Edit size={14}/>Editar</button>
+                            <div className="border-l h-6 border-indigo-700"></div>
                             <span className="text-sm">Cambiar estado a:</span>
                             <button onClick={() => handleBulkStatusChange('Activo')} className="px-2 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600">Activo</button>
-                            <button onClick={() => handleBulkStatusChange('Inactivo')} className="px-2 py-1 text-xs bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Inactivo</button>
-                            <button onClick={() => handleBulkStatusChange('Obsoleto')} className="px-2 py-1 text-xs bg-gray-500 text-white rounded-lg hover:bg-gray-600">Obsoleto</button>
-                            <div className="border-l h-6 border-blue-300"></div>
-                            <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-600 bg-red-100 rounded-lg font-semibold hover:bg-red-200"><Trash2 size={14}/>Eliminar Seleccionados</button>
+                            <button onClick={() => handleBulkStatusChange('Inactivo')} className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600">Inactivo</button>
+                            <button onClick={() => handleBulkStatusChange('Obsoleto')} className="px-2 py-1 text-xs bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Obsoleto</button>
+                            <div className="border-l h-6 border-indigo-700"></div>
+                            <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-300 bg-red-800/50 rounded-lg font-semibold hover:bg-red-800"><Trash2 size={14}/>Eliminar</button>
                         </div>
                     </div>
                 )}
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                {/* Tabla de Ítems */}
+                <div className="overflow-x-auto bg-white rounded-lg shadow">
+                    <table className="w-full text-sm text-left text-gray-800 border-collapse">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-100">
                             <tr>
-                                <th className="p-3 w-4"><input type="checkbox" onChange={handleSelectAll} checked={selectedSkus.length > 0 && selectedSkus.length === items.length && items.length > 0} /></th>
-                                <th className="p-3">SKU</th>
-                                <th className="p-3">Nombre</th>
+                                <th className="p-3 w-4 border-b border-r border-gray-200"><input type="checkbox" onChange={handleSelectAll} checked={selectedSkus.length > 0 && selectedSkus.length === items.length && items.length > 0} className="rounded" /></th>
+                                <SortableHeader sortKey="sku">SKU</SortableHeader>
+                                <SortableHeader sortKey="name">Nombre</SortableHeader>
                                 <SortableHeader sortKey="item_type">Tipo de Prod.</SortableHeader>
-                                <SortableHeader sortKey="unit_of_measure">En Stock</SortableHeader>
+                                <SortableHeader sortKey="in_stock">En Stock</SortableHeader>
                                 <SortableHeader sortKey="location">Ubicación</SortableHeader>
                                 <SortableHeader sortKey="status">Estado</SortableHeader>
-                                <th className="p-3">Acciones</th>
+                                <th className="p-3 border-b border-gray-200">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {loading ? (<tr><td colSpan="8" className="text-center p-4">Cargando...</td></tr>) 
+                            {loading ? (<tr><td colSpan="8" className="text-center p-4 text-gray-500">Cargando...</td></tr>) 
                             : error ? (<tr><td colSpan="8" className="text-center text-red-500 p-4">{error}</td></tr>) 
                             : (sortedItems.map(item => {
                                 const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
-                                const statusStyles = { 'Activo': 'bg-green-100 text-green-800', 'Inactivo': 'bg-yellow-100 text-yellow-800', 'Obsoleto': 'bg-gray-100 text-gray-800' };
+                                const statusStyles = { 'Activo': 'bg-green-500 text-white', 'Inactivo': 'bg-red-500 text-white', 'Obsoleto': 'bg-yellow-500 text-black' };
                                 return (
-                                <tr key={item.sku} className={`border-b hover:bg-gray-50 ${selectedSkus.includes(item.sku) ? 'bg-blue-50' : ''}`}>
-                                    <td className="p-3"><input type="checkbox" checked={selectedSkus.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} /></td>
-                                    <td className="p-3 font-medium text-gray-900">{item.sku}</td><td className="p-3">{item.name}</td>
-                                    <td className="p-3 text-gray-500">{item.item_type}</td>
-                                    <td className={`p-3 font-semibold ${needsReorder ? 'text-red-600' : 'text-gray-800'}`}>{item.in_stock} {item.unit_of_measure}</td>
-                                    <td className="p-3">{item.location ?? 'N/A'}</td>
-                                    <td className="p-3 overflow-visible">
-                                         <select 
+                                <tr key={item.sku} className={`border-b border-gray-200 hover:bg-gray-200 ${selectedSkus.includes(item.sku) ? 'bg-indigo-50' : ''}`}>
+                                    <td className="p-3 border-r border-gray-200"><input type="checkbox" checked={selectedSkus.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} className="rounded" /></td>
+                                    <td className="p-3 font-medium text-gray-900 border-r border-gray-200">{item.sku}</td>
+                                    <td className="p-3 border-r border-gray-200">{item.name}</td>
+                                    <td className="p-3 text-gray-600 border-r border-gray-200">{item.item_type}</td>
+                                    <td className={`p-3 font-semibold border-r border-gray-200 ${needsReorder ? 'text-red-600' : ''}`}>{item.in_stock} {item.unit_of_measure}</td>
+                                    <td className="p-3 border-r border-gray-200">{item.location ?? 'N/A'}</td>
+                                    <td className="p-3 border-r border-gray-200">
+                                        <select 
                                             value={item.status} 
                                             onChange={(e) => handleStatusChange(item, e.target.value)}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-full w-28 text-center border-none appearance-none cursor-pointer ${statusStyles[item.status] || 'bg-gray-100'}`}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-full w-28 text-center border-none appearance-none cursor-pointer ${statusStyles[item.status] || 'bg-gray-200 text-gray-800'}`}
                                             style={{ backgroundImage: 'none' }}
                                         >
                                             <option value="Activo">Activo</option>

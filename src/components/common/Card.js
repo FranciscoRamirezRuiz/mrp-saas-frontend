@@ -2,9 +2,11 @@
 import React from 'react';
 
 const Card = ({ title, children, className = '' }) => (
-  <div className={`bg-white p-6 rounded-2xl shadow-xl border border-gray-100 transition-shadow duration-300 ${className}`}>
-    {title && <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">{title}</h3>}
-    {children}
+  <div className={`bg-slate-800/60 backdrop-blur-sm p-6 rounded-2xl border border-slate-700 shadow-lg hover:shadow-indigo-500/10 transition-shadow duration-300 ${className}`}>
+    {title && <h3 className="text-xl font-bold text-white mb-4 border-b border-slate-600 pb-2">{title}</h3>}
+    <div className="text-slate-300">
+        {children}
+    </div>
   </div>
 );
 

@@ -40,7 +40,7 @@ const ItemsTable = ({ flatList, itemSearchQuery, setItemSearchQuery }) => {
                     </thead>
                     <tbody>
                         {filteredFlatList.map(item => (
-                            <tr key={item.sku} className="border-b hover:bg-gray-50">
+                            <tr key={item.sku} className="border-b hover:bg-gray-50 hover:text-black">
                                 <td className="p-3 font-medium text-gray-900">{item.name} ({item.sku})</td>
                                 <td className="p-3 text-gray-600">{item.item_type}</td>
                                 <td className="p-3 text-right font-semibold text-indigo-600">
@@ -274,7 +274,7 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
                         {loading ? (<tr><td colSpan="5" className="text-center p-4">Cargando...</td></tr>) :
                         error ? (<tr><td colSpan="5" className="text-center text-red-500 p-4">{error}</td></tr>) :
                         (boms.map(bom => (
-                            <tr key={bom.sku} className={`border-b hover:bg-gray-50 ${selectedBoms.includes(bom.sku) ? 'bg-blue-50' : ''}`}>
+                            <tr key={bom.sku} className={`border-b hover:bg-gray-50 hover:text-black ${selectedBoms.includes(bom.sku) ? 'bg-blue-50' : ''}`}>
                                 <td className="p-3">
                                     <input 
                                         type="checkbox" 

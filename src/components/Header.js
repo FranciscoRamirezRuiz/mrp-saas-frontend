@@ -1,12 +1,12 @@
-// src/components/Header.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, X, ShoppingBag, Box, ChevronDown } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ShoppingBag, Box, ChevronDown } from 'lucide-react';
 
 const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [openSubMenu, setOpenSubMenu] = useState(null); // To track which submenu is open
+    const [openSubMenu, setOpenSubMenu] = useState(null);
     const menuRef = useRef(null);
 
+    // Corregido: Orden del menú cambiado
     const navItems = [
         { name: 'Dashboard', icon: Home, view: 'dashboard' }, 
         { name: 'Gestión de Ítems', icon: Package, view: 'items' }, 
@@ -31,14 +31,13 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
 
     const handleNavClick = (view) => {
         setActiveView(view);
-        setIsMenuOpen(false); // Always close the main menu on any selection
-        setOpenSubMenu(null); // Reset submenu state as well
+        setIsMenuOpen(false);
+        setOpenSubMenu(null);
     };
 
     const handleSubMenuToggle = (itemName) => {
         setOpenSubMenu(openSubMenu === itemName ? null : itemName);
     };
-
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -52,7 +51,7 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
     }, [menuRef]);
 
     return (
-        <header className="relative flex items-center justify-between h-20 bg-slate-900 shadow-lg z-20 sticky top-0 px-4 md:px-8">
+        <header className="relative flex items-center justify-between h-20 bg-slate-900/80 backdrop-blur-sm shadow-lg z-20 sticky top-0 px-4 md:px-8 border-b border-slate-700">
             <div 
                 className="flex items-center space-x-2 cursor-pointer"
                 onClick={onLogoClick}
@@ -78,7 +77,7 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
                                 !item.subItems ? (
                                     <button
                                         key={item.name} onClick={() => handleNavClick(item.view)}
-                                        className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ activeView === item.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                        className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ activeView === item.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
                                     >
                                         <item.icon className="h-4 w-4 mr-3" /> {item.name}
                                     </button>
@@ -98,7 +97,7 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
                                                 {item.subItems.map(subItem => (
                                                     <button
                                                         key={subItem.view} onClick={() => handleNavClick(subItem.view)}
-                                                        className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ activeView === subItem.view ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                                        className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ activeView === subItem.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
                                                     >
                                                         <subItem.icon className="h-4 w-4 mr-3" /> {subItem.name}
                                                     </button>

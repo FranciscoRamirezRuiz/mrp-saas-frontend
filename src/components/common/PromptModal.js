@@ -32,7 +32,7 @@ const PromptModal = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
                 <form onSubmit={handleSubmit}>
-                    <h3 className="text-lg font-bold mb-2">{title}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">{title}</h3>
                     {message && <p className="text-sm text-gray-600 mb-4">{message}</p>}
                     
                     {inputType === 'text' && (
@@ -40,7 +40,7 @@ const PromptModal = ({
                             type="text"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-lg mb-4"
+                            className="w-full p-2 border border-gray-300 rounded-lg mb-4 text-black"
                             autoFocus
                             required
                         />
@@ -50,7 +50,7 @@ const PromptModal = ({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 bg-gray-200 rounded-lg text-sm font-medium hover:bg-gray-300"
+                            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-300"
                         >
                             {cancelText}
                         </button>

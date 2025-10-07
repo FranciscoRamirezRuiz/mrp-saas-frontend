@@ -10,6 +10,7 @@ import PMPView from './components/views/PMPView';
 import MRPView from './components/views/MRPView';
 import SettingsView from './components/views/SettingsView';
 import PlaceholderView from './components/views/PlaceholderView';
+import './App.css';
 
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
@@ -31,7 +32,7 @@ function App() {
 
     const renderContent = () => {
         switch (activeView) {
-            case 'dashboard': return <DashboardView predictionResults={predictionResults} />; // <-- MODIFICACIÓN AQUÍ
+            case 'dashboard': return <DashboardView />;
             case 'items': return <ItemsView />; 
             case 'bom': return <BOMView />; 
             case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
@@ -48,11 +49,11 @@ function App() {
     }
 
     return (
-        <div className="flex flex-col h-screen bg-gray-100 font-sans antialiased text-gray-800">
+        <div className="flex flex-col h-screen font-sans antialiased">
             <Header activeView={activeView} setActiveView={setActiveView} onLogoClick={goToHome} />
-            <div className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto">
                 {renderContent()}
-            </div>
+            </main>
         </div>
     );
 }

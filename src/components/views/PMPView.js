@@ -157,7 +157,7 @@ const PMPView = ({ results, setResults }) => {
                                  </tr>
                              </thead>
                              <tbody>
-                                <tr className="border-b">
+                                <tr className="border-b hover:bg-gray-50 hover:text-black">
                                      <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
                                          Inventario Proyectado
                                          <TooltipHelper text="Inventario esperado al final del período. Se vuelve rojo si es negativo."><HelpCircle size={14} className="text-gray-400 cursor-pointer"/></TooltipHelper>
@@ -166,14 +166,14 @@ const PMPView = ({ results, setResults }) => {
                                          <td key={index} className={`p-3 border border-gray-200 text-center font-semibold ${period.projected_inventory < 0 ? 'bg-red-100 text-red-800' : ''}`}>{period.projected_inventory}</td>
                                      ))}
                                 </tr>
-                                <tr className="border-b">
+                                <tr className="border-b hover:bg-gray-50 hover:text-black">
                                      <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
                                          Pronóstico de Venta
                                           <TooltipHelper text="Necesidades brutas según el pronóstico de ventas."><HelpCircle size={14} className="text-gray-400 cursor-pointer"/></TooltipHelper>
                                      </td>
                                      {pmp.table.map((period, index) => <td key={index} className="p-3 border border-gray-200 text-center">{period.gross_requirements}</td>)}
                                 </tr>
-                                <tr className="border-b">
+                                <tr className="border-b hover:bg-gray-50 hover:text-black">
                                      <td className="p-3 font-medium border border-gray-200 bg-gray-50 flex items-center gap-1">
                                         Producción Planificada
                                          <TooltipHelper text="Cantidad de producción sugerida. Puedes editarla para simular escenarios."><HelpCircle size={14} className="text-gray-400 cursor-pointer"/></TooltipHelper>

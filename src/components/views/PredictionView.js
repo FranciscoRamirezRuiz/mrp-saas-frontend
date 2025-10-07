@@ -195,7 +195,7 @@ const PredictionView = ({ results, setResults }) => {
             const formattedDate = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             return (
                 <div className="bg-white p-3 border rounded-lg shadow-lg">
-                    <p className="font-semibold">{formattedDate}</p>
+                    <p className="font-semibold text-gray-800">{formattedDate}</p>
                     {payload.map((p, i) => (
                         <p key={i} style={{ color: p.color }}>{`${p.name}: ${p.value.toFixed(2)}`}</p>
                     ))}
@@ -207,7 +207,7 @@ const PredictionView = ({ results, setResults }) => {
 
     return (
         <div className="p-8 space-y-8">
-            <Card title="1. Cargar y Ver Historial de Ventas">
+            <Card title="1. Cargar y Mapear Historial de Ventas">
                 <div className="flex items-center gap-4 mb-4">
                     <input type="file" accept=".csv" onChange={handleFileChange} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600"/>
                 </div>
@@ -402,7 +402,7 @@ const PredictionView = ({ results, setResults }) => {
                                     </thead>
                                     <tbody>
                                         {activeForecast.demandSummary.map((summaryItem) => (
-                                            <tr key={summaryItem.period} className="border-b hover:bg-gray-50">
+                                            <tr key={summaryItem.period} className="border-b hover:bg-gray-50 hover:text-black">
                                                 <td className="p-3 font-medium">{summaryItem.period}</td>
                                                 <td className="p-3">{formatDate(summaryItem.start_date)}</td>
                                                 <td className="p-3">{formatDate(summaryItem.end_date)}</td>

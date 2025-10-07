@@ -88,7 +88,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar
                             <li
                                 key={opt.sku}
                                 onClick={() => handleSelect(opt.sku)}
-                                className="p-3 hover:bg-indigo-50 cursor-pointer text-sm"
+                                className="p-3 hover:bg-indigo-50 hover:text-black cursor-pointer text-sm"
                             >
                                 <div className="font-semibold text-gray-800">{opt.name} ({opt.sku})</div>
                                 <div className="text-xs text-gray-500 mt-1">
