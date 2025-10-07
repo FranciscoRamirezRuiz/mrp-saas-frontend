@@ -1,10 +1,11 @@
 // src/components/views/PMPView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, X, AlertTriangle, Send } from 'lucide-react';
-import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Area, ReferenceLine } from 'recharts';
 import { API_URL } from '../../api/config';
 import Card from '../common/Card';
 import SearchableSelect from '../common/SearchableSelect';
+import ConfirmationModal from '../common/ConfirmationModal';
 
 const PMPView = ({ results, setResults, skusWithPrediction }) => {
     const [allProducts, setAllProducts] = useState([]);
@@ -13,6 +14,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
     const [error, setError] = useState('');
     const [activeTabId, setActiveTabId] = useState(null);
     const [editablePmpTable, setEditablePmpTable] = useState([]);
+    const [orderToLaunch, setOrderToLaunch] = useState(null); // State for confirmation modal
 
     const productsWithPrediction = useMemo(() => {
         return allProducts.filter(p => skusWithPrediction.includes(p.sku));
@@ -57,7 +59,8 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                 id: `${skuToGenerate}-${Date.now()}`,
                 sku: skuToGenerate,
                 productName: product.name,
-                table: data.table.map(row => ({ ...row, product_sku: skuToGenerate }))
+                table: data.table.map(row => ({ ...row, product_sku: skuToGenerate })),
+                safety_stock: data.safety_stock
             };
 
             const existingIndex = results.findIndex(r => r.sku === skuToGenerate);
@@ -152,12 +155,20 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         setEditablePmpTable(finalTable);
     };
     
-    const handleLaunchOrder = async (periodData) => {
+    const promptLaunchOrder = (periodData) => {
+        if (periodData.planned_production_receipt > 0) {
+            setOrderToLaunch(periodData);
+        }
+    };
+
+    const executeLaunchOrder = async () => {
+        if (!orderToLaunch) return;
+
         const { sku } = activePMP;
         const receipt = {
             sku: sku,
-            quantity: periodData.planned_production_receipt,
-            due_date: periodData.start_date,
+            quantity: orderToLaunch.planned_production_receipt,
+            due_date: orderToLaunch.start_date,
         };
 
         try {
@@ -178,6 +189,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
             setError(err.message);
         } finally {
             setLoading(false);
+            setOrderToLaunch(null); // Close modal
         }
     };
 
@@ -192,6 +204,14 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
 
     return (
         <div className="p-8 space-y-8">
+            {orderToLaunch && (
+                <ConfirmationModal
+                    message={`¿Estás seguro que deseas cargar una recepción de ${orderToLaunch.planned_production_receipt} unidades para la ${orderToLaunch.period}?`}
+                    onConfirm={executeLaunchOrder}
+                    onCancel={() => setOrderToLaunch(null)}
+                />
+            )}
+
             <Card title="Generar Plan Maestro de Producción (PMP)">
                  <div className="flex items-end gap-4">
                      <div className="flex-grow">
@@ -248,16 +268,40 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                              
                              <div className="mb-8">
                                  <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Inventario vs. Producción</h4>
-                                 <ResponsiveContainer width="100%" height={250}>
+                                 <ResponsiveContainer width="100%" height={300}>
                                      <ComposedChart data={editablePmpTable} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                          <CartesianGrid strokeDasharray="3 3" />
                                          <XAxis dataKey="period" tick={{ fontSize: 12 }} />
                                          <YAxis />
                                          <Tooltip />
                                          <Legend />
-                                         <Bar dataKey="gross_requirements" name="Venta Pronosticada" barSize={20} fill="#a5b4fc" />
-                                         <Bar dataKey="planned_production_receipt" name="Producción Planificada" barSize={20} fill="#818cf8" />
-                                         <Line type="monotone" dataKey="projected_inventory" name="Inventario Proyectado" stroke="#4f46e5" strokeWidth={2} />
+                                         {activePMP && activePMP.safety_stock > 0 && (
+                                            <ReferenceLine 
+                                                y={activePMP.safety_stock} 
+                                                label={{ value: 'Stock Seg.', position: 'insideTopLeft' }} 
+                                                stroke="red" 
+                                                strokeDasharray="3 3" 
+                                                strokeWidth={2}
+                                            />
+                                        )}
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="gross_requirements" 
+                                            name="Venta Pronosticada" 
+                                            fill="#a5b4fc" 
+                                            stroke="#818cf8"
+                                            />
+                                         <Bar dataKey="planned_production_receipt" name="Producción Planificada" stackId="a" barSize={20} fill="#4f46e5" />
+                                         <Bar dataKey="scheduled_receipts" name="Recepciones Programadas" stackId="a" barSize={20} fill="#22c55e" />
+                                         <Line 
+                                            type="monotone" 
+                                            dataKey="projected_inventory" 
+                                            name="Inventario Proyectado" 
+                                            stroke="#16a34a" 
+                                            strokeWidth={3} 
+                                            dot={{ r: 5 }}
+                                            activeDot={{ r: 8 }}
+                                            />
                                      </ComposedChart>
                                  </ResponsiveContainer>
                              </div>
@@ -280,16 +324,21 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                     if (key === 'planned_production_receipt') {
                                                         return (
                                                             <td key={`${key}-${i}`} className={`p-1 border border-gray-200 text-center`}>
-                                                                <div className="flex items-center justify-center">
+                                                                <div className="relative w-24 mx-auto">
                                                                     <input
                                                                         type="number"
                                                                         value={value}
                                                                         onChange={(e) => handleProductionChange(i, parseInt(e.target.value, 10) || 0)}
                                                                         onFocus={(e) => e.target.select()}
-                                                                        className="w-20 p-1 text-center font-semibold bg-transparent border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                        className="w-full p-1 pr-8 text-center font-semibold bg-transparent border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                                                     />
                                                                     {value > 0 && (
-                                                                        <button onClick={() => handleLaunchOrder(period)} title="Lanzar Orden" className="ml-2 text-blue-600 hover:text-blue-800 disabled:text-gray-400" disabled={loading}>
+                                                                        <button 
+                                                                            onClick={() => promptLaunchOrder(period)} 
+                                                                            title="Lanzar Orden" 
+                                                                            className="absolute right-0 top-0 h-full px-2 text-blue-600 hover:text-blue-800 disabled:text-gray-400 flex items-center" 
+                                                                            disabled={loading}
+                                                                        >
                                                                             <Send size={16} />
                                                                         </button>
                                                                     )}
