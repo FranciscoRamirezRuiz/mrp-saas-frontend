@@ -10,7 +10,6 @@ import PMPView from './components/views/PMPView';
 import MRPView from './components/views/MRPView';
 import SettingsView from './components/views/SettingsView';
 import PlaceholderView from './components/views/PlaceholderView';
-import './App.css';
 
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
@@ -49,11 +48,15 @@ function App() {
     }
 
     return (
-        <div className="flex flex-col h-screen font-sans antialiased">
+        // CAMBIO PRINCIPAL: Se aplica el fondo de la página de inicio aquí
+        <div 
+            className="flex flex-col h-screen font-sans antialiased text-gray-800 bg-cover bg-center"
+            style={{ backgroundImage: "url(/background_network.png)" }}
+        >
             <Header activeView={activeView} setActiveView={setActiveView} onLogoClick={goToHome} />
-            <main className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto">
                 {renderContent()}
-            </main>
+            </div>
         </div>
     );
 }
