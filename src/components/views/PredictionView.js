@@ -218,17 +218,43 @@ const PredictionView = ({ results, setResults }) => {
                             <h3 className="text-md font-semibold text-gray-700 mb-2">Vista Previa de Datos</h3>
                             <div className="overflow-x-auto max-h-48 border rounded-lg">
                                 <table className="w-full text-xs">
-                                    <thead className="bg-gray-100 sticky top-0"><tr>{csvPreview.headers.map(h => <th key={h} className="p-2 text-left">{h}</th>)}</tr></thead>
-                                    <tbody>{csvPreview.data.map((row, i) => <tr key={i} className="border-t">{csvPreview.headers.map(h => <td key={h} className="p-2">{row[h]}</td>)}</tr>)}</tbody>
+                                    <thead className="bg-gray-100 sticky top-0">
+                                        <tr>{csvPreview.headers.map(h => <th key={h} className="p-2 text-left text-gray-700 font-medium">{h}</th>)}</tr>
+                                    </thead>
+                                    <tbody className="text-gray-800">
+                                        {csvPreview.data.map((row, i) => 
+                                            <tr key={i} className="border-t">
+                                                {csvPreview.headers.map(h => <td key={h} className="p-2">{row[h]}</td>)}
+                                            </tr>
+                                        )}
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
                         <div>
                             <h3 className="text-md font-semibold text-gray-700 mb-2">Mapeo de Columnas</h3>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div><label className="text-sm">Columna de Fecha (ds)</label><select value={columnMap.ds} onChange={e => setColumnMap(p => ({...p, ds: e.target.value}))} className="w-full p-2 border rounded-lg mt-1"><option value="">Seleccionar...</option>{csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
-                                <div><label className="text-sm">Columna de Valor (y)</label><select value={columnMap.y} onChange={e => setColumnMap(p => ({...p, y: e.target.value}))} className="w-full p-2 border rounded-lg mt-1"><option value="">Seleccionar...</option>{csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
-                                <div><label className="text-sm">Columna de SKU</label><select value={columnMap.sku} onChange={e => setColumnMap(p => ({...p, sku: e.target.value}))} className="w-full p-2 border rounded-lg mt-1"><option value="">Seleccionar...</option>{csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}</select></div>
+                                <div>
+                                    <label className="text-sm text-gray-700">Columna de Fecha (ds)</label>
+                                    <select value={columnMap.ds} onChange={e => setColumnMap(p => ({...p, ds: e.target.value}))} className="w-full p-2 border rounded-lg mt-1 bg-white text-black">
+                                        <option value="">Seleccionar...</option>
+                                        {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-sm text-gray-700">Columna de Valor (y)</label>
+                                    <select value={columnMap.y} onChange={e => setColumnMap(p => ({...p, y: e.target.value}))} className="w-full p-2 border rounded-lg mt-1 bg-white text-black">
+                                        <option value="">Seleccionar...</option>
+                                        {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-sm text-gray-700">Columna de SKU</label>
+                                    <select value={columnMap.sku} onChange={e => setColumnMap(p => ({...p, sku: e.target.value}))} className="w-full p-2 border rounded-lg mt-1 bg-white text-black">
+                                        <option value="">Seleccionar...</option>
+                                        {csvPreview.headers.map(h => <option key={h} value={h}>{h}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <button onClick={handleFileUpload} disabled={loading} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-400 hover:bg-indigo-700">
@@ -253,14 +279,14 @@ const PredictionView = ({ results, setResults }) => {
                      </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Pronóstico</label>
-                        <select value={forecastModel} onChange={(e) => setForecastModel(e.target.value)} className="p-2 border rounded-lg w-full">
+                        <select value={forecastModel} onChange={(e) => setForecastModel(e.target.value)} className="p-2 border rounded-lg w-full bg-white text-black">
                             <option value="prophet">Prophet (Recomendado)</option>
                             <option value="ses">Suavizado Exponencial Simple</option>
                         </select>
                      </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Días a Pronosticar</label>
-                        <input type="number" value={forecastPeriods} onChange={(e) => setForecastPeriods(e.target.value)} className="p-2 border rounded-lg w-full" placeholder="Ej. 90"/>
+                        <input type="number" value={forecastPeriods} onChange={(e) => setForecastPeriods(e.target.value)} className="p-2 border rounded-lg w-full bg-white text-black" placeholder="Ej. 90"/>
                      </div>
                 </div>
 
@@ -289,11 +315,11 @@ const PredictionView = ({ results, setResults }) => {
                             <div className="group relative">
                                 <label className="block text-sm font-medium text-gray-700">Modo de Estacionalidad</label>
                                 <div className="flex gap-4 mt-2">
-                                    <label className="text-sm"><input type="radio" name="seasonality_mode" value="additive" checked={advancedSettings.seasonality_mode === 'additive'} onChange={handleAdvancedSettingsChange}/> Aditivo</label>
-                                    <label className="text-sm"><input type="radio" name="seasonality_mode" value="multiplicative" checked={advancedSettings.seasonality_mode === 'multiplicative'} onChange={handleAdvancedSettingsChange}/> Multiplicativo</label>
+                                    <label className="text-sm text-gray-700"><input type="radio" name="seasonality_mode" value="additive" checked={advancedSettings.seasonality_mode === 'additive'} onChange={handleAdvancedSettingsChange}/> Aditivo</label>
+                                    <label className="text-sm text-gray-700"><input type="radio" name="seasonality_mode" value="multiplicative" checked={advancedSettings.seasonality_mode === 'multiplicative'} onChange={handleAdvancedSettingsChange}/> Multiplicativo</label>
                                 </div>
                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 text-xs text-white bg-gray-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                     'Multiplicativo' si las fluctuaciones estacionales crecen con la tendencia (p.ej. ventas navideñas).
+                                    'Multiplicativo' si las fluctuaciones estacionales crecen con la tendencia (p.ej. ventas navideñas).
                                 </span>
                             </div>
                         </div>
@@ -365,7 +391,7 @@ const PredictionView = ({ results, setResults }) => {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {activeForecast.components.trend && (
                                     <div>
-                                        <h4 className="font-semibold text-center mb-2">Tendencia</h4>
+                                        <h4 className="font-semibold text-center mb-2 text-gray-800">Tendencia</h4>
                                         <ResponsiveContainer width="100%" height={200}>
                                             <LineChart data={activeForecast.components.trend}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} /><YAxis domain={['dataMin', 'dataMax']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Tendencia" stroke="#8884d8" dot={false} /></LineChart>
                                         </ResponsiveContainer>
@@ -373,7 +399,7 @@ const PredictionView = ({ results, setResults }) => {
                                 )}
                                 {activeForecast.components.weekly && (
                                     <div>
-                                        <h4 className="font-semibold text-center mb-2">Estacionalidad Semanal</h4>
+                                        <h4 className="font-semibold text-center mb-2 text-gray-800">Estacionalidad Semanal</h4>
                                         <ResponsiveContainer width="100%" height={200}>
                                             <LineChart data={activeForecast.components.weekly.slice(0, 7)}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { weekday: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Semanal" stroke="#82ca9d" dot={false} /></LineChart>
                                         </ResponsiveContainer>
@@ -381,7 +407,7 @@ const PredictionView = ({ results, setResults }) => {
                                 )}
                                 {activeForecast.components.yearly && (
                                     <div>
-                                        <h4 className="font-semibold text-center mb-2">Estacionalidad Anual</h4>
+                                        <h4 className="font-semibold text-center mb-2 text-gray-800">Estacionalidad Anual</h4>
                                         <ResponsiveContainer width="100%" height={200}>
                                             <LineChart data={activeForecast.components.yearly}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short' })} /><YAxis domain={['auto', 'auto']} /><Tooltip content={<CustomTooltip />} /><Line type="monotone" dataKey="value" name="Anual" stroke="#ffc658" dot={false} /></LineChart>
                                         </ResponsiveContainer>
@@ -402,7 +428,7 @@ const PredictionView = ({ results, setResults }) => {
                                     </thead>
                                     <tbody>
                                         {activeForecast.demandSummary.map((summaryItem) => (
-                                            <tr key={summaryItem.period} className="border-b hover:bg-gray-50 hover:text-black">
+                                            <tr key={summaryItem.period} className="border-b text-gray-800 hover:bg-gray-50">
                                                 <td className="p-3 font-medium">{summaryItem.period}</td>
                                                 <td className="p-3">{formatDate(summaryItem.start_date)}</td>
                                                 <td className="p-3">{formatDate(summaryItem.end_date)}</td>

@@ -62,7 +62,7 @@ const SettingsView = () => {
             [listName]: [...prev[listName], value]
         }));
         setValue('');
-    };    
+    };   
 
     const handleRemoveFromList = (listName, value) => {
         setSettings(prev => ({
@@ -71,7 +71,7 @@ const SettingsView = () => {
         }));
     };
 
-    if (loading) return <div className="p-8 text-center"><Card title="Configuración del Sistema"><p>Cargando configuración...</p></Card></div>;
+    if (loading) return <div className="p-8 text-center"><Card title="Configuración del Sistema"><p className="text-gray-800">Cargando configuración...</p></Card></div>;
     if (error || !settings) return <div className="p-8 text-center text-red-500"><Card title="Configuración del Sistema"><p>{error || 'No se pudo cargar la configuración.'}</p></Card></div>;
 
     return (
@@ -83,11 +83,11 @@ const SettingsView = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label htmlFor="company_name" className="block text-sm font-medium text-gray-700">Nombre de la Empresa</label>
-                            <input id="company_name" name="company_name" value={settings.company_name} onChange={handleChange} className="mt-1 p-2 border rounded-lg w-full" />
+                            <input id="company_name" name="company_name" value={settings.company_name} onChange={handleChange} className="mt-1 p-2 border rounded-lg w-full bg-white text-black" />
                         </div>
                         <div>
                             <label htmlFor="currency_symbol" className="block text-sm font-medium text-gray-700">Símbolo de Moneda</label>
-                            <input id="currency_symbol" name="currency_symbol" value={settings.currency_symbol} onChange={handleChange} className="mt-1 p-2 border rounded-lg w-full" />
+                            <input id="currency_symbol" name="currency_symbol" value={settings.currency_symbol} onChange={handleChange} className="mt-1 p-2 border rounded-lg w-full bg-white text-black" />
                         </div>
                     </div>
                 </div>
@@ -97,7 +97,7 @@ const SettingsView = () => {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label htmlFor="default_lead_time_days" className="block text-sm font-medium text-gray-700">Lead Time de Compra por Defecto (días)</label>
-                            <input type="number" id="default_lead_time_days" name="default_lead_time_days" value={settings.default_lead_time_days} onChange={handleChange} className="mt-1 p-2 border rounded-lg w-full" />
+                            <input type="number" id="default_lead_time_days" name="default_lead_time_days" value={settings.default_lead_time_days} onChange={handleChange} className="mt-1 p-2 border rounded-lg w-full bg-white text-black" />
                         </div>
                         <div className="flex items-center pt-6">
                             <input type="checkbox" id="allow_negative_stock" name="allow_negative_stock" checked={settings.allow_negative_stock} onChange={handleChange} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
@@ -118,12 +118,12 @@ const SettingsView = () => {
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Ubicaciones de Bodega</label>
                             <div className="flex items-center gap-2 mt-1">
-                                <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nueva ubicación" className="p-2 border rounded-lg w-full" />
+                                <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Nueva ubicación" className="p-2 border rounded-lg w-full bg-white text-black" />
                                 <button onClick={() => handleAddToList('locations', newLocation, setNewLocation)} className="p-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"><Plus size={16}/></button>
                             </div>
                             <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2 bg-gray-50">
                                 {settings.locations.map(loc => (
-                                    <li key={loc} className="flex justify-between items-center text-sm p-2 bg-white rounded-lg shadow-sm">
+                                    <li key={loc} className="flex justify-between items-center text-sm p-2 bg-white rounded-lg shadow-sm text-gray-800">
                                         {loc}
                                         <button onClick={() => handleRemoveFromList('locations', loc)} className="text-red-500 hover:text-red-700"><X size={14}/></button>
                                     </li>
@@ -133,12 +133,12 @@ const SettingsView = () => {
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Unidades de Medida</label>
                              <div className="flex items-center gap-2 mt-1">
-                                <input value={newUnit} onChange={(e) => setNewUnit(e.target.value)} placeholder="Nueva unidad" className="p-2 border rounded-lg w-full" />
+                                <input value={newUnit} onChange={(e) => setNewUnit(e.target.value)} placeholder="Nueva unidad" className="p-2 border rounded-lg w-full bg-white text-black" />
                                 <button onClick={() => handleAddToList('units_of_measure', newUnit, setNewUnit)} className="p-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"><Plus size={16}/></button>
                             </div>
                             <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto border rounded-lg p-2 bg-gray-50">
                                 {settings.units_of_measure.map(unit => (
-                                    <li key={unit} className="flex justify-between items-center text-sm p-2 bg-white rounded-lg shadow-sm">
+                                    <li key={unit} className="flex justify-between items-center text-sm p-2 bg-white rounded-lg shadow-sm text-gray-800">
                                         {unit}
                                         <button onClick={() => handleRemoveFromList('units_of_measure', unit)} className="text-red-500 hover:text-red-700"><X size={14}/></button>
                                     </li>

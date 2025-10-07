@@ -48,12 +48,12 @@ const ItemModal = ({ item, onClose, onSave }) => {
                     <div className="bg-gray-50 p-4 rounded-lg">
                         <h3 className="font-semibold text-indigo-600 mb-3">Información General (Solo lectura)</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input value={`SKU: ${formData.sku}`} disabled className="p-2 border rounded bg-gray-100 text-sm" />
-                            <input value={`Nombre: ${formData.name}`} disabled className="p-2 border rounded bg-gray-100 text-sm" />
-                            <input value={`Categoría: ${formData.category}`} disabled className="p-2 border rounded bg-gray-100 text-sm" />
-                            <input value={`Stock Actual: ${formData.in_stock} ${formData.unit_of_measure}`} disabled className="p-2 border rounded bg-gray-100 text-sm" />
-                            <input value={`Tipo: ${formData.item_type}`} disabled className="p-2 border rounded bg-gray-100 text-sm" />
-                            <input value={`Estado: ${formData.status}`} disabled className="p-2 border rounded bg-gray-100 text-sm" />
+                            <input value={`SKU: ${formData.sku}`} disabled className="p-2 border rounded bg-gray-200 text-sm text-gray-600 font-medium" />
+                            <input value={`Nombre: ${formData.name}`} disabled className="p-2 border rounded bg-gray-200 text-sm text-gray-600 font-medium" />
+                            <input value={`Categoría: ${formData.category}`} disabled className="p-2 border rounded bg-gray-200 text-sm text-gray-600 font-medium" />
+                            <input value={`Stock Actual: ${formData.in_stock} ${formData.unit_of_measure}`} disabled className="p-2 border rounded bg-gray-200 text-sm text-gray-600 font-medium" />
+                            <input value={`Tipo: ${formData.item_type}`} disabled className="p-2 border rounded bg-gray-200 text-sm text-gray-600 font-medium" />
+                            <input value={`Estado: ${formData.status}`} disabled className="p-2 border rounded bg-gray-200 text-sm text-gray-600 font-medium" />
                         </div>
                     </div>
 
@@ -62,11 +62,11 @@ const ItemModal = ({ item, onClose, onSave }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Stock Crítico (Punto de Reorden)</label>
-                                <input type="number" name="reorder_point" value={formData.reorder_point || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
+                                <input type="number" name="reorder_point" value={formData.reorder_point || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Stock de Seguridad</label>
-                                <input type="number" name="stock_de_seguridad" value={formData.stock_de_seguridad || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
+                                <input type="number" name="stock_de_seguridad" value={formData.stock_de_seguridad || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black" />
                             </div>
                         </div>
                     </div>
@@ -77,25 +77,25 @@ const ItemModal = ({ item, onClose, onSave }) => {
                             {formData.item_type === 'Materia Prima' && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Lead Time de Compra (días)</label>
-                                    <input type="number" name="lead_time_compra" value={formData.lead_time_compra || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
+                                    <input type="number" name="lead_time_compra" value={formData.lead_time_compra || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black" />
                                 </div>
                             )}
                             {['Producto Intermedio', 'Producto Terminado'].includes(formData.item_type) && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">Lead Time Fabricación (días)</label>
-                                    <input type="number" name="lead_time_fabricacion" value={formData.lead_time_fabricacion || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" />
+                                    <input type="number" name="lead_time_fabricacion" value={formData.lead_time_fabricacion || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black" />
                                 </div>
                             )}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Política de Lote</label>
-                                <select name="politica_lote" value={formData.politica_lote || 'LxL'} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1">
-                                    <option value="LxL">Lote por Lote (LxL)</option>
-                                    <option value="FOQ">Cantidad Fija (FOQ)</option>
+                                <select name="politica_lote" value={formData.politica_lote || 'LxL'} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black">
+                                    <option className="text-black bg-white" value="LxL">Lote por Lote (LxL)</option>
+                                    <option className="text-black bg-white" value="FOQ">Cantidad Fija (FOQ)</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Tamaño de Lote Fijo</label>
-                                <input type="number" name="tamano_lote_fijo" value={formData.tamano_lote_fijo || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1" disabled={formData.politica_lote !== 'FOQ'} />
+                                <input type="number" name="tamano_lote_fijo" value={formData.tamano_lote_fijo || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black" disabled={formData.politica_lote !== 'FOQ'} />
                             </div>
                         </div>
                     </div>
@@ -105,15 +105,15 @@ const ItemModal = ({ item, onClose, onSave }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Ubicación</label>
-                                <select name="location" value={formData.location || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1">
-                                    <option value="">Seleccione...</option>
-                                    {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                <select name="location" value={formData.location || ''} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black">
+                                    <option className="text-black bg-white" value="">Seleccione...</option>
+                                    {locations.map(loc => <option className="text-black bg-white" key={loc} value={loc}>{loc}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Unidad de Medida</label>
-                                <select name="unit_of_measure" value={formData.unit_of_measure} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1">
-                                    {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                <select name="unit_of_measure" value={formData.unit_of_measure} onChange={handleChange} className="p-2 border border-gray-300 rounded-lg w-full mt-1 bg-white text-black">
+                                    {units.map(unit => <option className="text-black bg-white" key={unit} value={unit}>{unit}</option>)}
                                 </select>
                             </div>
                         </div>

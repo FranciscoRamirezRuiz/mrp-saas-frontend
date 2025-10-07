@@ -52,7 +52,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar
                         <span className="text-gray-500 ml-2">({selectedOption.sku})</span>
                     </div>
                 ) : <span className="text-gray-500">{placeholder}</span>}
-                <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown size={16} className={`transition-transform text-gray-800 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
                 <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
@@ -60,7 +60,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar
                         <input
                             type="text"
                             placeholder="Buscar por SKU o nombre..."
-                            className="w-full p-2 border rounded-lg mb-2"
+                            className="w-full p-2 border rounded-lg mb-2 bg-white text-black"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                         />
@@ -68,18 +68,18 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar
                             <select 
                                 value={filters.item_type} 
                                 onChange={e => setFilters(f => ({...f, item_type: e.target.value}))}
-                                className="w-1/2 p-1 border rounded"
+                                className="w-1/2 p-1 border rounded bg-white text-black"
                             >
-                                <option value="">Todo tipo</option>
-                                {uniqueTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                <option className="text-black bg-white" value="">Todo tipo</option>
+                                {uniqueTypes.map(type => <option className="text-black bg-white" key={type} value={type}>{type}</option>)}
                             </select>
                             <select 
                                 value={filters.unit_of_measure}
                                 onChange={e => setFilters(f => ({...f, unit_of_measure: e.target.value}))}
-                                className="w-1/2 p-1 border rounded"
+                                className="w-1/2 p-1 border rounded bg-white text-black"
                             >
-                                <option value="">Toda unidad</option>
-                                {uniqueUnits.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                                <option className="text-black bg-white" value="">Toda unidad</option>
+                                {uniqueUnits.map(unit => <option className="text-black bg-white" key={unit} value={unit}>{unit}</option>)}
                             </select>
                         </div>
                     </div>
@@ -88,7 +88,7 @@ const SearchableSelect = ({ options, value, onChange, placeholder = "Seleccionar
                             <li
                                 key={opt.sku}
                                 onClick={() => handleSelect(opt.sku)}
-                                className="p-3 hover:bg-indigo-50 hover:text-black cursor-pointer text-sm"
+                                className="p-3 hover:bg-indigo-50 cursor-pointer text-sm"
                             >
                                 <div className="font-semibold text-gray-800">{opt.name} ({opt.sku})</div>
                                 <div className="text-xs text-gray-500 mt-1">

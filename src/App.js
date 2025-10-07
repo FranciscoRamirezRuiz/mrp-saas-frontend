@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useState } from 'react';
 import Header from './components/Header';
 import HomeView from './components/views/HomeView';
@@ -10,12 +9,12 @@ import PMPView from './components/views/PMPView';
 import MRPView from './components/views/MRPView';
 import SettingsView from './components/views/SettingsView';
 import PlaceholderView from './components/views/PlaceholderView';
+import './App.css'; // Asegúrate de que este import esté presente
 
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
     const [showHome, setShowHome] = useState(true);
     
-    // Estados elevados para compartir entre vistas
     const [predictionResults, setPredictionResults] = useState([]);
     const [pmpResults, setPmpResults] = useState([]);
 
@@ -52,10 +51,8 @@ function App() {
     }
 
     return (
-        <div 
-            className="flex flex-col h-screen font-sans antialiased text-gray-800 bg-cover bg-center"
-            style={{ backgroundImage: "url(/background_network.png)" }}
-        >
+        // APLICAMOS LA CLASE DE FONDO AQUÍ
+        <div className="app-background flex flex-col h-screen font-sans antialiased">
             <Header activeView={activeView} setActiveView={setActiveView} onLogoClick={goToHome} />
             <div className="flex-1 overflow-y-auto">
                 {renderContent()}

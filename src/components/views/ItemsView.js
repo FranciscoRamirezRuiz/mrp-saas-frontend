@@ -289,34 +289,34 @@ const ItemsView = () => {
                 {/* Filtros */}
                 <div className="bg-white/10 p-4 rounded-xl shadow-inner mb-6">
                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
-                        <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
-                            <option value="">Filtrar por Estado</option>
-                            <option value="Activo">Activo</option>
-                            <option value="Inactivo">Inactivo</option>
-                            <option value="Obsoleto">Obsoleto</option>
-                        </select>
-                        <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
-                            <option value="">Filtrar por Tipo</option>
-                            <option value="Materia Prima">Materia Prima</option>
-                            <option value="Producto Intermedio">Producto Intermedio</option>
-                            <option value="Producto Terminado">Producto Terminado</option>
-                        </select>
-                        <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
-                            <option value="">Unidad de Medida</option>
-                            {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                        </select>
-                        <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
-                            <option value="">Ubicación</option>
-                            {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                        </select>
-                        <div className="flex items-center">
-                            <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-indigo-500 border-slate-600 bg-slate-700 rounded focus:ring-indigo-500" />
-                            <label htmlFor="critical_stock" className="ml-2 block text-sm text-slate-300">Stock Crítico</label>
-                        </div>
-                         <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-white bg-slate-600 rounded-lg hover:bg-slate-500">
-                            <FilterX size={16}/>Limpiar Filtros
-                        </button>
-                    </div>
+                         <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                             <option value="">Filtrar por Estado</option>
+                             <option value="Activo">Activo</option>
+                             <option value="Inactivo">Inactivo</option>
+                             <option value="Obsoleto">Obsoleto</option>
+                         </select>
+                         <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                             <option value="">Filtrar por Tipo</option>
+                             <option value="Materia Prima">Materia Prima</option>
+                             <option value="Producto Intermedio">Producto Intermedio</option>
+                             <option value="Producto Terminado">Producto Terminado</option>
+                         </select>
+                         <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                             <option value="">Unidad de Medida</option>
+                             {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                         </select>
+                         <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                             <option value="">Ubicación</option>
+                             {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                         </select>
+                         <div className="flex items-center">
+                             <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-indigo-500 border-slate-600 bg-slate-700 rounded focus:ring-indigo-500" />
+                             <label htmlFor="critical_stock" className="ml-2 block text-sm text-slate-300">Stock Crítico</label>
+                         </div>
+                          <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-white bg-slate-600 rounded-lg hover:bg-slate-500">
+                             <FilterX size={16}/>Limpiar Filtros
+                         </button>
+                     </div>
                 </div>
 
                 {/* Acciones en Lote */}
@@ -356,7 +356,7 @@ const ItemsView = () => {
                             : error ? (<tr><td colSpan="8" className="text-center text-red-500 p-4">{error}</td></tr>) 
                             : (sortedItems.map(item => {
                                 const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
-                                const statusStyles = { 'Activo': 'bg-green-500 text-white', 'Inactivo': 'bg-red-500 text-white', 'Obsoleto': 'bg-yellow-500 text-black' };
+                                const statusStyles = { 'Activo': 'bg-green-500', 'Inactivo': 'bg-red-500', 'Obsoleto': 'bg-yellow-500' };
                                 return (
                                 <tr key={item.sku} className={`border-b border-gray-200 hover:bg-gray-200 ${selectedSkus.includes(item.sku) ? 'bg-indigo-50' : ''}`}>
                                     <td className="p-3 border-r border-gray-200"><input type="checkbox" checked={selectedSkus.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} className="rounded" /></td>
@@ -366,16 +366,18 @@ const ItemsView = () => {
                                     <td className={`p-3 font-semibold border-r border-gray-200 ${needsReorder ? 'text-red-600' : ''}`}>{item.in_stock} {item.unit_of_measure}</td>
                                     <td className="p-3 border-r border-gray-200">{item.location ?? 'N/A'}</td>
                                     <td className="p-3 border-r border-gray-200">
-                                        <select 
-                                            value={item.status} 
-                                            onChange={(e) => handleStatusChange(item, e.target.value)}
-                                            className={`px-3 py-1 text-xs font-semibold rounded-full w-28 text-center border-none appearance-none cursor-pointer ${statusStyles[item.status] || 'bg-gray-200 text-gray-800'}`}
-                                            style={{ backgroundImage: 'none' }}
-                                        >
-                                            <option value="Activo">Activo</option>
-                                            <option value="Inactivo">Inactivo</option>
-                                            <option value="Obsoleto">Obsoleto</option>
-                                        </select>
+                                        <div className={`relative w-28 rounded-full ${statusStyles[item.status] || 'bg-gray-200'}`}>
+                                            <select 
+                                                value={item.status} 
+                                                onChange={(e) => handleStatusChange(item, e.target.value)}
+                                                className={`w-full px-3 py-1 text-xs font-semibold text-center border-none appearance-none cursor-pointer bg-transparent ${item.status === 'Obsoleto' ? 'text-black' : 'text-white'}`}
+                                                style={{ backgroundImage: 'none' }}
+                                            >
+                                                <option className="text-black bg-white" value="Activo">Activo</option>
+                                                <option className="text-black bg-white" value="Inactivo">Inactivo</option>
+                                                <option className="text-black bg-white" value="Obsoleto">Obsoleto</option>
+                                            </select>
+                                        </div>
                                     </td>
                                     <td className="p-3 flex gap-4">
                                         <button onClick={() => setItemToEdit(item)} className="text-indigo-600 hover:text-indigo-800" title="Editar"><Edit size={16}/></button>

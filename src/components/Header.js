@@ -16,7 +16,7 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
         { 
             name: 'Plan de Requerimientos', icon: ShoppingCart, subItems: [
                 { name: 'Requerimiento de Materiales', icon: ShoppingBag, view: 'mrp_materials' },
-                { name: 'Req. Productos Intermedios', icon: Box, view: 'mrp_products' },
+                { name: 'Requerimiento de Productos Intermedios', icon: Box, view: 'mrp_products' },
             ]
         },
         { name: 'Configuración', icon: Settings, view: 'settings' },

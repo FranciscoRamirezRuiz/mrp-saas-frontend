@@ -1,6 +1,6 @@
 // src/components/views/DashboardView.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Package, Warehouse, AlertTriangle, RefreshCw, ChevronsRightLeft, Trash2, PlusCircle, Settings, X, Edit2 } from 'lucide-react';
+import { Warehouse, AlertTriangle, RefreshCw, ChevronsRightLeft, Trash2, PlusCircle, Settings, X, Edit2 } from 'lucide-react';
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import Card from '../common/Card';
 import { API_URL } from '../../api/config';
@@ -55,14 +55,14 @@ const ABCAnalysisChart = ({ data }) => (
 const InventoryDistributionChart = ({ data }) => {
     const COLORS = { 'Materia Prima': '#10b981', 'Producto Intermedio': '#f59e0b', 'Producto Terminado': '#3b82f6' };
     return (
-         <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%">
             <PieChart>
                 <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} labelLine={false} label={({ name, percent }) => `${name.substring(0, 10)}...: ${(percent * 100).toFixed(0)}%`}>
                     {data?.map((entry) => <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name] || '#ccc'} />)}
                 </Pie>
                 <Tooltip />
             </PieChart>
-         </ResponsiveContainer>
+        </ResponsiveContainer>
     );
 };
 
@@ -245,8 +245,8 @@ const DashboardView = () => {
                     <button onClick={() => handleRenameWidget(widgetId)} className="cursor-pointer p-1 bg-gray-200 rounded-full hover:bg-gray-300"><Edit2 size={14} /></button>
                     { (widgetId.includes('chart') || widgetId.includes('distribution')) &&
                      <label className="cursor-pointer p-1 bg-gray-200 rounded-full hover:bg-gray-300">
-                        <Settings size={14} />
-                        <input type="color" value={widgetColors[widgetId] || '#3b82f6'} onChange={(e) => setWidgetColors({...widgetColors, [widgetId]: e.target.value})} className="absolute opacity-0 w-0 h-0"/>
+                         <Settings size={14} />
+                         <input type="color" value={widgetColors[widgetId] || '#3b82f6'} onChange={(e) => setWidgetColors({...widgetColors, [widgetId]: e.target.value})} className="absolute opacity-0 w-0 h-0"/>
                     </label>}
                     <button onClick={() => handleRemoveWidget(widgetId)} className="p-1 bg-red-200 rounded-full hover:bg-red-300"><X size={14} /></button>
                 </div>
@@ -259,7 +259,7 @@ const DashboardView = () => {
     };
     
     if (error) return <div className="p-8"><Card title="Dashboard"><p className="text-center text-red-500">{error}</p></Card></div>;
-    if (loading) return <div className="p-8"><Card title="Dashboard"><p className="text-center">Cargando datos...</p></Card></div>;
+    if (loading) return <div className="p-8"><Card title="Dashboard"><p className="text-center text-gray-800">Cargando datos...</p></Card></div>;
 
     const currentDashboard = dashboards.find(d => d.id === activeDashboardId);
     
@@ -270,8 +270,8 @@ const DashboardView = () => {
                     {dashboards.map(d => (
                         <div key={d.id} className="group relative">
                              <button onClick={() => setActiveDashboardId(d.id)} 
-                                className={`px-4 py-2 text-sm font-medium border-b-2 ${activeDashboardId === d.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                                {d.name}
+                                 className={`px-4 py-2 text-sm font-medium border-b-2 ${activeDashboardId === d.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+                                 {d.name}
                             </button>
                             {dashboards.length > 1 &&
                                 <button onClick={() => handleRemoveDashboard(d.id)} className="absolute top-0 right-0 p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700">
@@ -283,10 +283,10 @@ const DashboardView = () => {
                     <button onClick={handleAddDashboard} className="p-2 text-gray-500 hover:text-indigo-600"><PlusCircle size={16}/></button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <select value={timeframe} onChange={(e) => setTimeframe(Number(e.target.value))} className="p-2 border rounded-lg text-sm">
-                        <option value={30}>Últimos 30 días</option>
-                        <option value={90}>Últimos 90 días</option>
-                        <option value={365}>Último Año</option>
+                    <select value={timeframe} onChange={(e) => setTimeframe(Number(e.target.value))} className="p-2 border rounded-lg text-sm text-black">
+                        <option className="text-black bg-white" value={30}>Últimos 30 días</option>
+                        <option className="text-black bg-white" value={90}>Últimos 90 días</option>
+                        <option className="text-black bg-white" value={365}>Último Año</option>
                     </select>
                     <button onClick={() => setAddWidgetModalOpen(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Añadir Widget</button>
                 </div>
@@ -309,21 +309,21 @@ const DashboardView = () => {
 
             {isAddWidgetModalOpen && (
                  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
-                        <h3 className="text-lg font-bold mb-4">Añadir un Widget al Dashboard</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            {Object.entries(WIDGET_DEFINITIONS).map(([id, { title }]) => {
-                                const isAdded = currentDashboard?.layouts?.lg?.some(l => l.i === id);
-                                return (
-                                    <button key={id} onClick={() => handleAddWidget(id)} disabled={isAdded} className="p-4 border rounded-lg text-left disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed hover:bg-gray-100">
-                                        {widgetNames[id] || title} {isAdded && '(Añadido)'}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                         <button onClick={() => setAddWidgetModalOpen(false)} className="mt-6 w-full px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Cerrar</button>
-                    </div>
-                </div>
+                     <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+                         <h3 className="text-lg font-bold mb-4 text-gray-800">Añadir un Widget al Dashboard</h3>
+                         <div className="grid grid-cols-2 gap-4">
+                             {Object.entries(WIDGET_DEFINITIONS).map(([id, { title }]) => {
+                                 const isAdded = currentDashboard?.layouts?.lg?.some(l => l.i === id);
+                                 return (
+                                     <button key={id} onClick={() => handleAddWidget(id)} disabled={isAdded} className="p-4 border rounded-lg text-left text-gray-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed hover:bg-gray-100">
+                                         {widgetNames[id] || title} {isAdded && '(Añadido)'}
+                                     </button>
+                                 );
+                             })}
+                         </div>
+                          <button onClick={() => setAddWidgetModalOpen(false)} className="mt-6 w-full px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-800">Cerrar</button>
+                     </div>
+                 </div>
             )}
             
             <PromptModal 

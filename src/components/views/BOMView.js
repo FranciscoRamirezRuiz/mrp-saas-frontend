@@ -26,7 +26,7 @@ const ItemsTable = ({ flatList, itemSearchQuery, setItemSearchQuery }) => {
                     value={itemSearchQuery}
                     onChange={(e) => setItemSearchQuery(e.target.value)}
                     placeholder="Buscar por SKU o nombre en la lista..."
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg bg-white text-black"
                 />
             </div>
             <div className="border rounded-lg bg-white">
@@ -40,7 +40,7 @@ const ItemsTable = ({ flatList, itemSearchQuery, setItemSearchQuery }) => {
                     </thead>
                     <tbody>
                         {filteredFlatList.map(item => (
-                            <tr key={item.sku} className="border-b hover:bg-gray-50 hover:text-black">
+                            <tr key={item.sku} className="border-b hover:bg-gray-50">
                                 <td className="p-3 font-medium text-gray-900">{item.name} ({item.sku})</td>
                                 <td className="p-3 text-gray-600">{item.item_type}</td>
                                 <td className="p-3 text-right font-semibold text-indigo-600">
@@ -196,12 +196,12 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                  <div className="md:col-span-1 flex items-center gap-2 w-full md:w-auto">
                      <input 
-                        type="text" 
-                        value={searchQuery} 
-                        onChange={(e) => setSearchQuery(e.target.value)} 
-                        onKeyPress={(e) => e.key === 'Enter' && fetchBoms()}
-                        placeholder="Buscar por SKU o Nombre..." 
-                        className="p-2 border rounded-lg w-full" 
+                         type="text" 
+                         value={searchQuery} 
+                         onChange={(e) => setSearchQuery(e.target.value)} 
+                         onKeyPress={(e) => e.key === 'Enter' && fetchBoms()}
+                         placeholder="Buscar por SKU o Nombre..." 
+                         className="p-2 border rounded-lg w-full bg-white text-black" 
                     />
                     <button onClick={fetchBoms} className="p-2 bg-indigo-600 text-white rounded-lg"><Search size={20}/></button>
                 </div>
@@ -237,10 +237,10 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
             
             <div className="bg-gray-50 p-4 rounded-xl shadow-inner mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                    <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border rounded-lg">
-                        <option value="">Filtrar por Tipo de Producto</option>
-                        <option value="Producto Terminado">Producto Terminado</option>
-                        <option value="Producto Intermedio">Producto Intermedio</option>
+                    <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border rounded-lg bg-white text-black">
+                        <option className="text-black bg-white" value="">Filtrar por Tipo de Producto</option>
+                        <option className="text-black bg-white" value="Producto Terminado">Producto Terminado</option>
+                        <option className="text-black bg-white" value="Producto Intermedio">Producto Intermedio</option>
                     </select>
                     <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300">
                         <FilterX size={16}/>Limpiar Filtros
@@ -270,11 +270,11 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
                             <th className="p-3">ID (SKU)</th><th className="p-3">Nombre del Producto</th><th className="p-3">Tipo</th><th className="p-3">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="text-gray-800">
                         {loading ? (<tr><td colSpan="5" className="text-center p-4">Cargando...</td></tr>) :
                         error ? (<tr><td colSpan="5" className="text-center text-red-500 p-4">{error}</td></tr>) :
                         (boms.map(bom => (
-                            <tr key={bom.sku} className={`border-b hover:bg-gray-50 hover:text-black ${selectedBoms.includes(bom.sku) ? 'bg-blue-50' : ''}`}>
+                            <tr key={bom.sku} className={`border-b hover:bg-gray-50 ${selectedBoms.includes(bom.sku) ? 'bg-blue-50' : ''}`}>
                                 <td className="p-3">
                                     <input 
                                         type="checkbox" 
@@ -282,7 +282,7 @@ const BOMsTable = ({ onEdit, onCreateNew, onViewTree }) => {
                                         onChange={() => handleSelectItem(bom.sku)}
                                     />
                                 </td>
-                                <td className="p-3 font-medium">{bom.sku}</td>
+                                <td className="p-3 font-medium text-gray-900">{bom.sku}</td>
                                 <td className="p-3">{bom.name}</td>
                                 <td className="p-3">{bom.item_type}</td>
                                 <td className="p-3 flex gap-3">
@@ -383,7 +383,7 @@ const BOMEditor = ({ allItems, bomSku, onClose }) => {
                                     <th className="p-3 text-left">Acción</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-gray-800">
                                 {components.map((comp, index) => {
                                     const componentDetails = allItems.find(item => item.sku === comp.item_sku);
                                     return (
@@ -404,7 +404,7 @@ const BOMEditor = ({ allItems, bomSku, onClose }) => {
                                                     min="0.01"
                                                     value={comp.quantity} 
                                                     onChange={(e) => handleComponentChange(index, 'quantity', e.target.value)} 
-                                                    className="w-24 p-2 border rounded-lg"
+                                                    className="w-24 p-2 border rounded-lg bg-white text-black"
                                                 />
                                                 {componentDetails && <span className="ml-3 text-gray-500 text-xs font-semibold">{componentDetails.unit_of_measure}</span>}
                                             </div>
@@ -476,7 +476,7 @@ const BomTreeViewModal = ({ sku, onClose }) => {
                     onClick={() => hasChildren && setIsOpen(!isOpen)}
                 >
                     {hasChildren ? <ChevronRight size={16} className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} /> : <div className="w-4"></div>}
-                    <div className="flex items-center gap-2 ml-1">
+                    <div className="flex items-center gap-2 ml-1 text-gray-800">
                         {typeIcons[node.item_type]}
                         <span className="font-semibold">{node.name}</span>
                         <span className="text-gray-500">({node.sku})</span>
@@ -504,83 +504,83 @@ const BomTreeViewModal = ({ sku, onClose }) => {
 
     return (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">Jerarquía y Desglose de BOM: {sku}</h2>
-                    <button onClick={onClose}><X size={24} className="text-gray-500 hover:text-red-500"/></button>
-                </div>
-                <div className="max-h-[75vh] overflow-y-auto pr-4">
-                    {loading ? <p className="text-center">Cargando...</p> : 
-                     (stats && treeData) ? (
-                        <div>
-                            <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
-                                <h3 className="text-lg font-semibold mb-4 text-gray-700">Resumen del Desglose</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-                                    <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-indigo-600">{stats.total_unique_items}</p><p className="text-sm text-gray-500">Ítems Únicos</p></div>
-                                    <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-green-600">{stats.count_raw}</p><p className="text-sm text-gray-500">Materias Primas</p></div>
-                                    <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-yellow-600">{stats.count_intermediate}</p><p className="text-sm text-gray-500">P. Intermedios</p></div>
-                                    <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-gray-600">{Object.keys(stats.units_of_measure).length}</p><p className="text-sm text-gray-500">Tipos de Unidades</p></div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 items-center">
-                                    <div>
-                                        <h4 className="font-semibold text-center text-sm mb-2">Composición por Tipo de Ítem</h4>
-                                        <ResponsiveContainer width="100%" height={200}>
-                                            <PieChart>
-                                                <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} label>
-                                                    {chartData.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.color} />)}
-                                                </Pie>
-                                                <Tooltip />
-                                                <Legend iconSize={10} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-semibold text-center text-sm mb-2">Ítems por Unidad de Medida</h4>
-                                        <ResponsiveContainer width="100%" height={180}>
-                                             <BarChart data={unitsData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis type="number" allowDecimals={false} />
-                                                <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
-                                                <Tooltip formatter={(value) => [value, 'Cantidad']}/>
-                                                <Bar dataKey="value" fill="#8884d8" />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </div>
+             <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-4xl">
+                 <div className="flex justify-between items-center mb-6">
+                     <h2 className="text-2xl font-bold text-gray-800">Jerarquía y Desglose de BOM: {sku}</h2>
+                     <button onClick={onClose}><X size={24} className="text-gray-500 hover:text-red-500"/></button>
+                 </div>
+                 <div className="max-h-[75vh] overflow-y-auto pr-4">
+                     {loading ? <p className="text-center text-gray-800">Cargando...</p> : 
+                      (stats && treeData) ? (
+                         <div>
+                             <div className="bg-gray-50 p-4 rounded-lg mb-6 border">
+                                 <h3 className="text-lg font-semibold mb-4 text-gray-700">Resumen del Desglose</h3>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+                                     <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-indigo-600">{stats.total_unique_items}</p><p className="text-sm text-gray-500">Ítems Únicos</p></div>
+                                     <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-green-600">{stats.count_raw}</p><p className="text-sm text-gray-500">Materias Primas</p></div>
+                                     <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-yellow-600">{stats.count_intermediate}</p><p className="text-sm text-gray-500">P. Intermedios</p></div>
+                                     <div className="bg-white p-3 rounded-lg shadow-sm"><p className="text-2xl font-bold text-gray-600">{Object.keys(stats.units_of_measure).length}</p><p className="text-sm text-gray-500">Tipos de Unidades</p></div>
+                                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 items-center">
+                                     <div>
+                                         <h4 className="font-semibold text-center text-sm mb-2 text-gray-700">Composición por Tipo de Ítem</h4>
+                                         <ResponsiveContainer width="100%" height={200}>
+                                             <PieChart>
+                                                 <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={55} label>
+                                                     {chartData.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.color} />)}
+                                                 </Pie>
+                                                 <Tooltip />
+                                                 <Legend iconSize={10} />
+                                             </PieChart>
+                                         </ResponsiveContainer>
+                                     </div>
+                                     <div>
+                                         <h4 className="font-semibold text-center text-sm mb-2 text-gray-700">Ítems por Unidad de Medida</h4>
+                                         <ResponsiveContainer width="100%" height={180}>
+                                              <BarChart data={unitsData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                                                 <CartesianGrid strokeDasharray="3 3" />
+                                                 <XAxis type="number" allowDecimals={false} />
+                                                 <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} />
+                                                 <Tooltip formatter={(value) => [value, 'Cantidad']}/>
+                                                 <Bar dataKey="value" fill="#8884d8" />
+                                             </BarChart>
+                                         </ResponsiveContainer>
+                                     </div>
+                                 </div>
+                             </div>
 
-                            <div className="border-b border-gray-200 mb-4">
-                                <nav className="-mb-px flex space-x-6">
-                                    <button 
-                                        onClick={() => setActiveTab('tree')}
-                                        className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'tree' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                                    >Árbol de Jerarquía</button>
-                                    <button 
-                                        onClick={() => setActiveTab('items')}
-                                        className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'items' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                                    >Lista de Ítems Requeridos</button>
-                                </nav>
-                            </div>
-                            
-                            <div>
-                                {activeTab === 'tree' && (
-                                    <div className="border rounded-lg p-2 bg-white">
-                                        <CollapsibleNode node={treeData} defaultOpen={true} />
-                                    </div>
-                                )}
-                                {activeTab === 'items' && (
-                                    <ItemsTable 
-                                        flatList={flatList} 
-                                        itemSearchQuery={itemSearchQuery} 
-                                        setItemSearchQuery={setItemSearchQuery} 
-                                    />
-                                )}
-                            </div>
-                        </div>
-                     ) : <p className="text-center text-red-500">No se encontró información. (Verifique que el producto exista y tenga BOM definido).</p>}
-                </div>
-            </div>
-        </div>
+                             <div className="border-b border-gray-200 mb-4">
+                                 <nav className="-mb-px flex space-x-6">
+                                     <button 
+                                         onClick={() => setActiveTab('tree')}
+                                         className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'tree' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                     >Árbol de Jerarquía</button>
+                                     <button 
+                                         onClick={() => setActiveTab('items')}
+                                         className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'items' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                     >Lista de Ítems Requeridos</button>
+                                 </nav>
+                             </div>
+                             
+                             <div>
+                                 {activeTab === 'tree' && (
+                                     <div className="border rounded-lg p-2 bg-white">
+                                         <CollapsibleNode node={treeData} defaultOpen={true} />
+                                     </div>
+                                 )}
+                                 {activeTab === 'items' && (
+                                     <ItemsTable 
+                                         flatList={flatList} 
+                                         itemSearchQuery={itemSearchQuery} 
+                                         setItemSearchQuery={setItemSearchQuery} 
+                                     />
+                                 )}
+                             </div>
+                         </div>
+                       ) : <p className="text-center text-red-500">No se encontró información. (Verifique que el producto exista y tenga BOM definido).</p>}
+                 </div>
+             </div>
+         </div>
     );
 }
 
@@ -613,7 +613,7 @@ const BOMView = () => {
         setView(targetView);
     };
 
-    if (loadingItems) return <div className="p-8"><Card title="Gestión de Lista de Materiales (BOM)"><p className="text-center">Cargando ítems...</p></Card></div>;
+    if (loadingItems) return <div className="p-8"><Card title="Gestión de Lista de Materiales (BOM)"><p className="text-center text-gray-800">Cargando ítems...</p></Card></div>;
 
     const renderView = () => {
         switch (view) {
