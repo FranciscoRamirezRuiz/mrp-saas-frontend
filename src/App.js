@@ -14,6 +14,8 @@ import PlaceholderView from './components/views/PlaceholderView';
 function App() {
     const [activeView, setActiveView] = useState('dashboard');
     const [showHome, setShowHome] = useState(true);
+    
+    // Estados elevados para compartir entre vistas
     const [predictionResults, setPredictionResults] = useState([]);
     const [pmpResults, setPmpResults] = useState([]);
 
@@ -30,12 +32,14 @@ function App() {
     };
 
     const renderContent = () => {
+        const skusWithPrediction = predictionResults.map(p => p.selectedSku);
+
         switch (activeView) {
             case 'dashboard': return <DashboardView />;
             case 'items': return <ItemsView />; 
             case 'bom': return <BOMView />; 
             case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
-            case 'pmp': return <PMPView results={pmpResults} setResults={setPmpResults} />;
+            case 'pmp': return <PMPView results={pmpResults} setResults={setPmpResults} skusWithPrediction={skusWithPrediction} />;
             case 'mrp_materials': return <MRPView pmpResults={pmpResults} />;
             case 'mrp_products': return <PlaceholderView title={getTitle(activeView)} />;
             case 'settings': return <SettingsView />;
@@ -48,7 +52,6 @@ function App() {
     }
 
     return (
-        // CAMBIO PRINCIPAL: Se aplica el fondo de la página de inicio aquí
         <div 
             className="flex flex-col h-screen font-sans antialiased text-gray-800 bg-cover bg-center"
             style={{ backgroundImage: "url(/background_network.png)" }}
