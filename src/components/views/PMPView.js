@@ -1,6 +1,6 @@
 // src/components/views/PMPView.js
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, X, AlertTriangle } from 'lucide-react';
+import { Calendar, X, AlertTriangle, Send } from 'lucide-react';
 import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { API_URL } from '../../api/config';
 import Card from '../common/Card';
@@ -12,6 +12,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [activeTabId, setActiveTabId] = useState(null);
+    const [editablePmpTable, setEditablePmpTable] = useState([]);
 
     const productsWithPrediction = useMemo(() => {
         return allProducts.filter(p => skusWithPrediction.includes(p.sku));
@@ -24,7 +25,6 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                 if (!response.ok) throw new Error('No se pudieron cargar los productos.');
                 const finishedProducts = await response.json();
                 setAllProducts(finishedProducts);
-                // Si hay productos con predicción, seleccionar el primero por defecto
                 if (skusWithPrediction.length > 0) {
                     const firstSku = finishedProducts.find(p => skusWithPrediction.includes(p.sku))?.sku;
                     if (firstSku) setSelectedSku(firstSku);
@@ -36,9 +36,8 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         fetchProducts();
     }, [skusWithPrediction]);
 
-
-    const handleGeneratePMP = async () => {
-        if (!selectedSku) {
+    const handleGeneratePMP = async (skuToGenerate = selectedSku) => {
+        if (!skuToGenerate) {
             setError('Por favor, selecciona un producto.');
             return;
         }
@@ -46,23 +45,22 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         setError('');
 
         try {
-            const response = await fetch(`${API_URL}/pmp/calculate/${selectedSku}`, { method: 'POST' });
+            const response = await fetch(`${API_URL}/pmp/calculate/${skuToGenerate}`, { method: 'POST' });
             if (!response.ok) {
                 const errData = await response.json();
                 throw new Error(errData.detail || 'Error al generar el PMP.');
             }
             const data = await response.json();
-            const product = allProducts.find(p => p.sku === selectedSku);
+            const product = allProducts.find(p => p.sku === skuToGenerate);
             
             const newPmp = {
-                id: `${selectedSku}-${Date.now()}`,
-                sku: selectedSku,
+                id: `${skuToGenerate}-${Date.now()}`,
+                sku: skuToGenerate,
                 productName: product.name,
-                table: data.table.map(row => ({ ...row, product_sku: selectedSku }))
+                table: data.table.map(row => ({ ...row, product_sku: skuToGenerate }))
             };
 
-            // Reemplazar si ya existe un PMP para ese SKU
-            const existingIndex = results.findIndex(r => r.sku === selectedSku);
+            const existingIndex = results.findIndex(r => r.sku === skuToGenerate);
             if(existingIndex > -1) {
                 const updatedResults = [...results];
                 updatedResults[existingIndex] = newPmp;
@@ -91,12 +89,106 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         if (!activeTabId) return results.length > 0 ? results[0] : null;
         return results.find(r => r.id === activeTabId);
     }, [activeTabId, results]);
+    
+    useEffect(() => {
+        if (activePMP) {
+            setEditablePmpTable(JSON.parse(JSON.stringify(activePMP.table)));
+        } else {
+            setEditablePmpTable([]);
+        }
+    }, [activePMP]);
 
     useEffect(() => {
         if (!activeTabId && results.length > 0) {
             setActiveTabId(results[0].id);
         }
     }, [results, activeTabId]);
+    
+    const handleProductionChange = (index, newValue) => {
+        const product = allProducts.find(p => p.sku === activePMP.sku);
+        if (!product) return;
+
+        const safetyStock = product.stock_de_seguridad || 0;
+        const newTable = [...editablePmpTable];
+
+        newTable[index] = { ...newTable[index], planned_production_receipt: newValue, is_manual: true };
+
+        for (let i = index; i < newTable.length; i++) {
+            const prevInventory = i === 0 ? product.in_stock || 0 : newTable[i - 1].projected_inventory;
+            
+            const currentPeriod = { ...newTable[i] };
+            currentPeriod.initial_inventory = prevInventory;
+            
+            const inventoryBeforeProduction = prevInventory 
+                                            + currentPeriod.scheduled_receipts 
+                                            - currentPeriod.gross_requirements;
+
+            if (!currentPeriod.is_manual && i > index) {
+                if (inventoryBeforeProduction < safetyStock) {
+                    currentPeriod.net_requirements = safetyStock - inventoryBeforeProduction;
+                    currentPeriod.planned_production_receipt = currentPeriod.net_requirements;
+                } else {
+                    currentPeriod.net_requirements = 0;
+                    currentPeriod.planned_production_receipt = 0;
+                }
+            } else if (i === index) {
+                 if (inventoryBeforeProduction < safetyStock) {
+                    currentPeriod.net_requirements = safetyStock - inventoryBeforeProduction;
+                } else {
+                    currentPeriod.net_requirements = 0;
+                }
+            }
+            
+            currentPeriod.projected_inventory = inventoryBeforeProduction + currentPeriod.planned_production_receipt;
+            
+            newTable[i] = currentPeriod;
+        }
+
+        const finalTable = newTable.map(row => {
+            const { is_manual, ...rest } = row;
+            return rest;
+        });
+
+        setEditablePmpTable(finalTable);
+    };
+    
+    const handleLaunchOrder = async (periodData) => {
+        const { sku } = activePMP;
+        const receipt = {
+            sku: sku,
+            quantity: periodData.planned_production_receipt,
+            due_date: periodData.start_date,
+        };
+
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_URL}/pmp/scheduled-receipts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(receipt),
+            });
+
+            if (!response.ok) {
+                throw new Error('No se pudo crear la recepción programada.');
+            }
+            
+            await handleGeneratePMP(sku);
+
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const pmpTableRows = [
+        { key: 'initial_inventory', label: 'Inventario Inicial' },
+        { key: 'gross_requirements', label: 'Pronóstico de Demanda' },
+        { key: 'scheduled_receipts', label: 'Recepciones Programadas' },
+        { key: 'projected_inventory', label: 'Inventario Proyectado Disponible' },
+        { key: 'net_requirements', label: 'Necesidades Netas' },
+        { key: 'planned_production_receipt', label: 'Recepción de Producción Planificada' }
+    ];
 
     return (
         <div className="p-8 space-y-8">
@@ -115,7 +207,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                              <p className="text-xs text-red-600 mt-1">No hay productos con predicciones. Por favor, genera un pronóstico primero.</p>
                          )}
                      </div>
-                     <button onClick={handleGeneratePMP} disabled={loading || !selectedSku} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-400 hover:bg-indigo-700">
+                     <button onClick={() => handleGeneratePMP()} disabled={loading || !selectedSku} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-400 hover:bg-indigo-700">
                          <Calendar size={16}/> {loading ? 'Calculando...' : 'Generar / Actualizar PMP'}
                      </button>
                  </div>
@@ -150,42 +242,80 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                          ))}
                      </div>
 
-                     {activePMP && (
+                     {activePMP && editablePmpTable.length > 0 && (
                          <div key={activePMP.id} className="space-y-8 animate-fadeIn">
-                             <h3 className="text-lg font-bold text-gray-800">Detalle del Plan para: <span className="text-indigo-600">{activePMP.productName}</span></h3>
+                            <h3 className="text-lg font-bold text-gray-800">Detalle del Plan para: <span className="text-indigo-600">{activePMP.productName}</span></h3>
+                             
                              <div className="mb-8">
-                                 <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Venta vs. Producción</h4>
+                                 <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Inventario vs. Producción</h4>
                                  <ResponsiveContainer width="100%" height={250}>
-                                     <ComposedChart data={activePMP.table} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                     <ComposedChart data={editablePmpTable} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                                          <CartesianGrid strokeDasharray="3 3" />
                                          <XAxis dataKey="period" tick={{ fontSize: 12 }} />
                                          <YAxis />
                                          <Tooltip />
                                          <Legend />
-                                         <Bar dataKey="gross_requirements" name="Venta Pronosticada" barSize={20} fill="#8884d8" />
-                                         <Line type="monotone" dataKey="planned_production_receipt" name="Producción Planificada" stroke="#82ca9d" strokeWidth={2} />
+                                         <Bar dataKey="gross_requirements" name="Venta Pronosticada" barSize={20} fill="#a5b4fc" />
+                                         <Bar dataKey="planned_production_receipt" name="Producción Planificada" barSize={20} fill="#818cf8" />
+                                         <Line type="monotone" dataKey="projected_inventory" name="Inventario Proyectado" stroke="#4f46e5" strokeWidth={2} />
                                      </ComposedChart>
                                  </ResponsiveContainer>
                              </div>
                              <div className="overflow-x-auto">
                                  <table className="w-full text-sm text-left border-collapse">
-                                     <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                                     <thead className="text-xs text-gray-700 uppercase bg-gray-100">
                                          <tr>
-                                             <th className="p-3 font-semibold border border-gray-200">Concepto</th>
-                                             {activePMP.table.map(period => <th key={period.period} className="p-3 font-semibold border border-gray-200 text-center">{period.period}</th>)}
+                                             <th className="p-3 font-semibold border border-gray-200 min-w-[200px]">Concepto</th>
+                                             {editablePmpTable.map(period => <th key={period.period} className="p-3 font-semibold border border-gray-200 text-center">{period.period}</th>)}
                                          </tr>
                                      </thead>
                                      <tbody>
-                                         <tr className="border-b"><td className="p-3 font-medium border border-gray-200 bg-gray-50">Inventario Proyectado</td>{activePMP.table.map((p, i) => <td key={i} className={`p-3 border border-gray-200 text-center font-semibold ${p.projected_inventory < 0 ? 'text-red-600' : ''}`}>{p.projected_inventory}</td>)}</tr>
-                                         <tr className="border-b"><td className="p-3 font-medium border border-gray-200 bg-gray-50">Pronóstico de Venta</td>{activePMP.table.map((p, i) => <td key={i} className="p-3 border border-gray-200 text-center">{p.gross_requirements}</td>)}</tr>
-                                         <tr className="border-b"><td className="p-3 font-medium border border-gray-200 bg-gray-50">Producción Planificada</td>{activePMP.table.map((p, i) => <td key={i} className="p-3 border border-gray-200 text-center">{p.planned_production_receipt}</td>)}</tr>
-                                     </tbody>
+                                        {pmpTableRows.map(({ key, label }) => (
+                                            <tr key={key} className={`border-b ${key === 'projected_inventory' ? 'bg-indigo-50' : key === 'planned_production_receipt' ? 'bg-yellow-50' : 'bg-white'}`}>
+                                                <td className="p-3 font-medium border border-gray-200 text-gray-800">{label}</td>
+                                                {editablePmpTable.map((period, i) => {
+                                                    const value = period[key];
+                                                    const isNegative = key === 'projected_inventory' && value < 0;
+                                                    
+                                                    if (key === 'planned_production_receipt') {
+                                                        return (
+                                                            <td key={`${key}-${i}`} className={`p-1 border border-gray-200 text-center`}>
+                                                                <div className="flex items-center justify-center">
+                                                                    <input
+                                                                        type="number"
+                                                                        value={value}
+                                                                        onChange={(e) => handleProductionChange(i, parseInt(e.target.value, 10) || 0)}
+                                                                        onFocus={(e) => e.target.select()}
+                                                                        className="w-20 p-1 text-center font-semibold bg-transparent border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                    />
+                                                                    {value > 0 && (
+                                                                        <button onClick={() => handleLaunchOrder(period)} title="Lanzar Orden" className="ml-2 text-blue-600 hover:text-blue-800 disabled:text-gray-400" disabled={loading}>
+                                                                            <Send size={16} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        );
+                                                    }
+                                                    
+                                                    return (
+                                                        <td key={`${key}-${i}`} className={`p-3 border border-gray-200 text-center font-semibold 
+                                                            ${isNegative ? 'text-red-600' : ''} 
+                                                            ${value === 0 ? 'text-gray-400' : ''}
+                                                            ${key === 'scheduled_receipts' && value > 0 ? 'text-green-700 bg-green-100' : ''}
+                                                        `}>
+                                                            {value}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
                                  </table>
                              </div>
                          </div>
                      )}
-
-                 </Card>
+                </Card>
             )}
         </div>
     );

@@ -237,13 +237,18 @@ const ItemsView = () => {
             </div>
         </th>
     );
-
+    
+    // MODIFICADO: Añadimos las nuevas cabeceras para la exportación.
     const exportHeaders = [
         { label: "SKU", key: "sku" }, { label: "Nombre", key: "name" }, { label: "Categoría", key: "category" },
         { label: "En Stock", key: "in_stock" }, { label: "Unidad", key: "unit_of_measure" }, { label: "Ubicación", key: "location" },
         { label: "Tipo", key: "item_type" }, { label: "Estado", key: "status" }, 
         { label: "Lead Time de Compra", key: "lead_time_compra" }, 
-        { label: "Lead Time de Fabricación", key: "lead_time_fabricacion" }
+        { label: "Lead Time de Fabricación", key: "lead_time_fabricacion" },
+        { label: "Stock de Seguridad", key: "stock_de_seguridad" },
+        { label: "Punto de Reorden", key: "reorder_point" },
+        { label: "Politica de Lote", key: "politica_lote" },
+        { label: "Tamano de Lote Fijo", key: "tamano_lote_fijo" }
     ];
 
     const handlePdfExport = () => {
