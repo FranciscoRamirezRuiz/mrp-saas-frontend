@@ -264,7 +264,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
 
                      {activePMP && editablePmpTable.length > 0 && (
                          <div key={activePMP.id} className="space-y-8 animate-fadeIn">
-                            <h3 className="text-lg font-bold text-gray-800">Detalle del Plan para: <span className="text-indigo-600">{activePMP.productName}</span></h3>
+                             <h3 className="text-lg font-bold text-gray-800">Detalle del Plan para: <span className="text-indigo-600">{activePMP.productName}</span></h3>
                              
                              <div className="mb-8">
                                  <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Inventario vs. Producción</h4>
@@ -291,9 +291,9 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                             fill="#a5b4fc" 
                                             stroke="#818cf8"
                                             />
-                                         <Bar dataKey="planned_production_receipt" name="Producción Planificada" stackId="a" barSize={20} fill="#4f46e5" />
-                                         <Bar dataKey="scheduled_receipts" name="Recepciones Programadas" stackId="a" barSize={20} fill="#22c55e" />
-                                         <Line 
+                                        <Bar dataKey="planned_production_receipt" name="Producción Planificada" stackId="a" barSize={20} fill="#4f46e5" />
+                                        <Bar dataKey="scheduled_receipts" name="Recepciones Programadas" stackId="a" barSize={20} fill="#22c55e" />
+                                        <Line 
                                             type="monotone" 
                                             dataKey="projected_inventory" 
                                             name="Inventario Proyectado" 
@@ -330,7 +330,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                                         value={value}
                                                                         onChange={(e) => handleProductionChange(i, parseInt(e.target.value, 10) || 0)}
                                                                         onFocus={(e) => e.target.select()}
-                                                                        className="w-full p-1 pr-8 text-center font-semibold bg-transparent border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                                        className="w-full p-1 pr-8 text-center font-semibold bg-transparent border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black"
                                                                     />
                                                                     {value > 0 && (
                                                                         <button 
@@ -348,9 +348,8 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                     }
                                                     
                                                     return (
-                                                        <td key={`${key}-${i}`} className={`p-3 border border-gray-200 text-center font-semibold 
+                                                        <td key={`${key}-${i}`} className={`p-3 border border-gray-200 text-center font-semibold text-gray-800
                                                             ${isNegative ? 'text-red-600' : ''} 
-                                                            ${value === 0 ? 'text-gray-400' : ''}
                                                             ${key === 'scheduled_receipts' && value > 0 ? 'text-green-700 bg-green-100' : ''}
                                                         `}>
                                                             {value}

@@ -56,10 +56,10 @@ const OrdersTimeline = ({ orders, title, icon: Icon, colorClass }) => {
                 <div key={weekKey} className="border rounded-lg overflow-hidden">
                     <button onClick={() => toggleWeek(weekKey)} className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 flex justify-between items-center">
                         <span className="font-bold text-gray-700">{weekKey}</span>
-                        <ChevronDown size={20} className={`transition-transform ${openWeeks[weekKey] ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={20} className={`transition-transform text-gray-800 ${openWeeks[weekKey] ? 'rotate-180' : ''}`} />
                     </button>
                     {openWeeks[weekKey] && (
-                        <div className="p-3">
+                        <div className="p-3 bg-white text-gray-800">
                             {groupedByWeek[weekKey].map((item, i) => {
                                 const orderDate = new Date(item.order_date);
                                 const dueDate = new Date(item.due_date);
@@ -159,7 +159,7 @@ const ProductionSummary = ({ pmp, summaryData, loading, error }) => {
                                                     <th className="p-2 text-right">Lead Time Acumulado (días)</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="bg-white">
+                                            <tbody className="bg-white text-gray-800">
                                                 {components.map(comp => (
                                                     <tr key={comp.sku} className="border-b hover:bg-gray-50">
                                                         <td className="p-2 font-medium">{comp.name} ({comp.sku})</td>
@@ -225,8 +225,7 @@ const MRPView = ({ pmpResults }) => {
         setError('');
         const endpoint = format === 'csv' ? '/mrp/export/csv' : '/mrp/export/pdf';
         const fileExtension = format;
-        const mimeType = format === 'csv' ? 'text/csv' : 'application/pdf';
-
+        
         try {
             const payload = [{ table: pmpToExport.table }];
             const response = await fetch(`${API_URL}${endpoint}`, {
@@ -333,9 +332,9 @@ const MRPView = ({ pmpResults }) => {
                                 onChange={(e) => setFilterStatus(e.target.value)}
                                 className="w-full p-2 border rounded-lg bg-white text-black"
                             >
-                                <option value="todos">Todos</option>
-                                <option value="calculados">Calculados</option>
-                                <option value="pendientes">Pendientes</option>
+                                <option className="text-black bg-white" value="todos">Todos</option>
+                                <option className="text-black bg-white" value="calculados">Calculados</option>
+                                <option className="text-black bg-white" value="pendientes">Pendientes</option>
                             </select>
                         </div>
                     </div>
@@ -350,7 +349,7 @@ const MRPView = ({ pmpResults }) => {
                     ) : filteredPmpResults.length > 0 ? (
                         filteredPmpResults.map(pmp => (
                             <div key={pmp.id} className="border rounded-lg shadow-sm">
-                                <div className="p-4 bg-white flex justify-between items-center">
+                                <div className="p-4 bg-white flex justify-between items-center text-gray-800">
                                     <div>
                                         <p className="font-bold text-lg text-indigo-700">{pmp.productName}</p>
                                         <p className="text-sm text-gray-500">Plan Maestro de Producción</p>
@@ -408,7 +407,7 @@ const MRPView = ({ pmpResults }) => {
                                         <div className="border rounded-lg">
                                             <button onClick={() => toggleTimelines(pmp.id)} className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 flex justify-between items-center">
                                                 <span className="font-bold text-gray-700">Recomendaciones de Órdenes (Semanales)</span>
-                                                <ChevronDown size={20} className={`transition-transform ${timelinesOpen[pmp.id] ? 'rotate-180' : ''}`} />
+                                                <ChevronDown size={20} className={`transition-transform text-gray-800 ${timelinesOpen[pmp.id] ? 'rotate-180' : ''}`} />
                                             </button>
                                             {timelinesOpen[pmp.id] && (
                                                 <div className="p-4 space-y-6">

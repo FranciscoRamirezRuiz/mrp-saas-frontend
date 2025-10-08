@@ -1,12 +1,12 @@
+// src/components/layout/Header.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ShoppingBag, Box, ChevronDown } from 'lucide-react';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ChevronDown } from 'lucide-react';
 
 const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [openSubMenu, setOpenSubMenu] = useState(null);
     const menuRef = useRef(null);
 
-    // Corregido: Orden del menú cambiado
     const navItems = [
         { name: 'Dashboard', icon: Home, view: 'dashboard' }, 
         { name: 'Gestión de Ítems', icon: Package, view: 'items' }, 
@@ -14,10 +14,9 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
         { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
         { name: 'Plan Maestro', icon: Calendar, view: 'pmp' }, 
         { 
-            name: 'Plan de Requerimientos', icon: ShoppingCart, subItems: [
-                { name: 'Requerimiento de Materiales', icon: ShoppingBag, view: 'mrp_materials' },
-                { name: 'Requerimiento de Productos Intermedios', icon: Box, view: 'mrp_products' },
-            ]
+            name: 'Plan de Requerimiento de Materiales', // Nombre cambiado
+            icon: ShoppingCart,                         // Ícono original
+            view: 'mrp_materials'                       // Vista del enlace deseado
         },
         { name: 'Configuración', icon: Settings, view: 'settings' },
     ];
@@ -25,7 +24,7 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
         'prediction': 'Predicción de Ventas', 'pmp': 'Plan Maestro de Producción', 
-        'mrp_materials': 'Plan de Requerimiento de Materiales', 'mrp_products': 'Plan de Requerimiento de Productos',
+        'mrp_materials': 'Plan de Requerimiento de Materiales',
         'settings': 'Configuración'
     }[view] || 'Dashboard');
 
