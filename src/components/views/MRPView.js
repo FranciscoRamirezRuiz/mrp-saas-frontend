@@ -1,6 +1,6 @@
 // src/components/views/MRPView.js
 import React, { useState, useMemo } from 'react';
-import { AlertTriangle, Calendar, ChevronsRight, RefreshCw, Eye, CheckCircle, ShoppingCart, Package, ChevronDown, List, Clock, Info, Loader } from 'lucide-react';
+import { AlertTriangle, Calendar, ChevronsRight, RefreshCw, Eye, CheckCircle, ShoppingCart, Package, ChevronDown, Info, Loader } from 'lucide-react';
 import { API_URL } from '../../api/config.js';
 import Card from '../common/Card.js';
 import { formatDate } from '../../utils/formatDate.js';
@@ -52,7 +52,7 @@ const OrdersTimeline = ({ orders, title, icon: Icon, colorClass }) => {
              <h3 className={`text-lg font-semibold flex items-center gap-2 ${colorClass}`}>
                 <Icon size={20} /> {title} ({orders.length})
             </h3>
-            {sortedWeeks.map((weekKey, index) => (
+            {sortedWeeks.map((weekKey) => (
                 <div key={weekKey} className="border rounded-lg overflow-hidden">
                     <button onClick={() => toggleWeek(weekKey)} className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 flex justify-between items-center">
                         <span className="font-bold text-gray-700">{weekKey}</span>
@@ -94,7 +94,7 @@ const OrdersTimeline = ({ orders, title, icon: Icon, colorClass }) => {
 };
 
 const ProductionSummary = ({ pmp, onFetchSummary, summaryData, loading, error }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
 
     const handleToggle = () => {
         if (!isOpen && !summaryData) {
@@ -182,6 +182,7 @@ const MRPView = ({ pmpResults }) => {
     const [summaryData, setSummaryData] = useState({});
     const [summaryLoading, setSummaryLoading] = useState({});
     const [summaryError, setSummaryError] = useState({});
+    const [timelinesOpen, setTimelinesOpen] = useState({});
 
     const handleCalculateMRP = async (pmpToCalculate) => {
         setCalculatingPmpId(pmpToCalculate.id);
@@ -203,6 +204,8 @@ const MRPView = ({ pmpResults }) => {
             
             setMrpData(prev => ({ ...prev, [pmpToCalculate.id]: data }));
             setVisibleResults(prev => ({ ...prev, [pmpToCalculate.id]: true }));
+            // Automatically fetch summary after calculating MRP
+            fetchProductionSummary(pmpToCalculate);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -266,6 +269,10 @@ const MRPView = ({ pmpResults }) => {
         setVisibleResults(prev => ({ ...prev, [pmpId]: !prev[pmpId] }));
     };
 
+    const toggleTimelines = (pmpId) => {
+        setTimelinesOpen(prev => ({...prev, [pmpId]: !prev[pmpId]}));
+    };
+
     return (
         <div className="p-8 space-y-8">
             <Card title="Centro de Planificación de Requerimientos (MRP)">
@@ -314,16 +321,27 @@ const MRPView = ({ pmpResults }) => {
                                     </div>
                                 </div>
                                 {visibleResults[pmp.id] && mrpData[pmp.id] && (
-                                     <div className="p-4 border-t bg-gray-50 space-y-6">
-                                         <OrdersTimeline orders={mrpData[pmp.id].planned_purchase_orders} title="Recomendaciones de Compra" icon={ShoppingCart} colorClass="text-green-600" />
-                                         <OrdersTimeline orders={mrpData[pmp.id].planned_manufacturing_orders} title="Recomendaciones de Fabricación" icon={Package} colorClass="text-blue-600" />
-                                         <ProductionSummary
+                                     <div className="p-4 border-t bg-gray-50 space-y-4">
+                                        <ProductionSummary
                                             pmp={pmp}
                                             onFetchSummary={() => fetchProductionSummary(pmp)}
                                             summaryData={summaryData[pmp.id]}
                                             loading={summaryLoading[pmp.id]}
                                             error={summaryError[pmp.id]}
                                         />
+                                        
+                                        <div className="border rounded-lg">
+                                            <button onClick={() => toggleTimelines(pmp.id)} className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 flex justify-between items-center">
+                                                <span className="font-bold text-gray-700">Recomendaciones de Órdenes (Semanales)</span>
+                                                <ChevronDown size={20} className={`transition-transform ${timelinesOpen[pmp.id] ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            {timelinesOpen[pmp.id] && (
+                                                <div className="p-4 space-y-6">
+                                                    <OrdersTimeline orders={mrpData[pmp.id].planned_purchase_orders} title="Recomendaciones de Compra" icon={ShoppingCart} colorClass="text-green-600" />
+                                                    <OrdersTimeline orders={mrpData[pmp.id].planned_manufacturing_orders} title="Recomendaciones de Fabricación" icon={Package} colorClass="text-blue-600" />
+                                                </div>
+                                            )}
+                                        </div>
                                      </div>
                                 )}
                             </div>
