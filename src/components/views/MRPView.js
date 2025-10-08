@@ -1,6 +1,6 @@
 // src/components/views/MRPView.js
 import React, { useState, useMemo, useEffect } from 'react';
-import { AlertTriangle, ChevronsRight, RefreshCw, Eye, CheckCircle, ShoppingCart, Package, ChevronDown, Info, Loader, Search } from 'lucide-react';
+import { AlertTriangle, ChevronsRight, RefreshCw, Eye, CheckCircle, ShoppingCart, Package, ChevronDown, Info, Loader, Search, FileDown } from 'lucide-react';
 import { API_URL } from '../../api/config';
 import Card from '../common/Card';
 import { formatDate } from '../../utils/formatDate';
@@ -181,7 +181,6 @@ const ProductionSummary = ({ pmp, summaryData, loading, error }) => {
     );
 };
 
-
 const MRPView = ({ pmpResults }) => {
     const [mrpData, setMrpData] = useState({});
     const [calculatingPmpId, setCalculatingPmpId] = useState(null);
@@ -219,6 +218,39 @@ const MRPView = ({ pmpResults }) => {
             setError(err.message);
         } finally {
             setCalculatingPmpId(null);
+        }
+    };
+    
+    const handleExport = async (pmpToExport, format) => {
+        setError('');
+        const endpoint = format === 'csv' ? '/mrp/export/csv' : '/mrp/export/pdf';
+        const fileExtension = format;
+        const mimeType = format === 'csv' ? 'text/csv' : 'application/pdf';
+
+        try {
+            const payload = [{ table: pmpToExport.table }];
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error al exportar el plan MRP como ${format.toUpperCase()}.`);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `plan_requerimientos_${pmpToExport.sku}.${fileExtension}`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+
+        } catch (err) {
+            setError(err.message);
         }
     };
     
@@ -332,6 +364,22 @@ const MRPView = ({ pmpResults }) => {
                                             <span className="flex items-center gap-2 text-sm font-semibold text-yellow-600 bg-yellow-100 px-3 py-1 rounded-full">
                                                 <RefreshCw size={16} className={calculatingPmpId === pmp.id ? 'animate-spin' : ''} /> Pendiente
                                             </span>
+                                        )}
+                                        {mrpData[pmp.id] && (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleExport(pmp, 'csv')}
+                                                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                                                >
+                                                    <FileDown size={14}/> CSV
+                                                </button>
+                                                <button
+                                                    onClick={() => handleExport(pmp, 'pdf')}
+                                                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
+                                                >
+                                                    <FileDown size={14}/> PDF
+                                                </button>
+                                            </div>
                                         )}
                                         <button
                                             onClick={() => handleCalculateMRP(pmp)}
