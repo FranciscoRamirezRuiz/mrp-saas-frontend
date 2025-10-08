@@ -1,9 +1,9 @@
 // src/components/views/MRPView.js
 import React, { useState, useMemo } from 'react';
-import { AlertTriangle, Calendar, ChevronsRight, RefreshCw, Eye, CheckCircle, ShoppingCart, Package, ChevronDown } from 'lucide-react';
-import { API_URL } from '../../api/config';
-import Card from '../common/Card';
-import { formatDate } from '../../utils/formatDate';
+import { AlertTriangle, Calendar, ChevronsRight, RefreshCw, Eye, CheckCircle, ShoppingCart, Package, ChevronDown, List, Clock, Info, Loader } from 'lucide-react';
+import { API_URL } from '../../api/config.js';
+import Card from '../common/Card.js';
+import { formatDate } from '../../utils/formatDate.js';
 
 // Helper to get the week number for a given date
 const getWeekNumber = (d) => {
@@ -72,7 +72,7 @@ const OrdersTimeline = ({ orders, title, icon: Icon, colorClass }) => {
                                             <p className="text-xs text-gray-500">{item.sku}</p>
                                         </div>
                                         <div className="col-span-2 text-right">
-                                            <p className="font-bold text-indigo-600 text-lg">{item.quantity}</p>
+                                            <p className="font-bold text-indigo-600 text-lg">{item.quantity.toFixed(2)}</p>
                                         </div>
                                         <div className="col-span-6">
                                             <div className="relative h-6 bg-gray-200 rounded-full">
@@ -93,12 +93,95 @@ const OrdersTimeline = ({ orders, title, icon: Icon, colorClass }) => {
     );
 };
 
+const ProductionSummary = ({ pmp, onFetchSummary, summaryData, loading, error }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    const handleToggle = () => {
+        if (!isOpen && !summaryData) {
+            onFetchSummary();
+        }
+        setIsOpen(!isOpen);
+    };
+
+    return (
+        <div className="border rounded-lg mt-4">
+            <button
+                onClick={handleToggle}
+                className="w-full p-3 text-left bg-gray-100 hover:bg-gray-200 flex justify-between items-center"
+            >
+                <div className="flex items-center gap-2">
+                    <Info size={16} className="text-gray-600"/>
+                    <span className="font-bold text-gray-700">Resumen de Requerimientos para "{pmp.productName}"</span>
+                </div>
+                <ChevronDown size={20} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isOpen && (
+                <div className="p-4 bg-gray-50">
+                    {loading && <div className="flex justify-center items-center gap-2 text-gray-600"><Loader size={16} className="animate-spin"/> Cargando resumen...</div>}
+                    {error && <p className="text-red-500 text-sm">{error}</p>}
+                    {summaryData && (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                                    <p className="text-sm text-gray-500">Total a Producir</p>
+                                    <p className="text-xl font-bold text-indigo-600">{summaryData.quantity_to_produce}</p>
+                                </div>
+                                <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                                    <p className="text-sm text-gray-500">Lead Time Máximo</p>
+                                    <p className="text-xl font-bold text-red-600">{summaryData.longest_lead_time} días</p>
+                                </div>
+                                <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                                    <p className="text-sm text-gray-500">Materias Primas</p>
+                                    <p className="text-xl font-bold text-green-600">{summaryData.raw_material_count}</p>
+                                </div>
+                                <div className="bg-white p-3 rounded-lg shadow-sm text-center">
+                                    <p className="text-sm text-gray-500">Productos Intermedios</p>
+                                    <p className="text-xl font-bold text-yellow-600">{summaryData.intermediate_product_count}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-gray-700 mb-2">Lista de Componentes Requeridos</h4>
+                                <div className="overflow-x-auto max-h-64 border rounded-lg">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-gray-700 uppercase bg-gray-200 sticky top-0">
+                                            <tr>
+                                                <th className="p-2">Componente (SKU)</th>
+                                                <th className="p-2">Tipo</th>
+                                                <th className="p-2 text-right">Cantidad Total</th>
+                                                <th className="p-2 text-right">Lead Time Acumulado (días)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white">
+                                            {summaryData.components.map(comp => (
+                                                <tr key={comp.sku} className="border-b hover:bg-gray-50">
+                                                    <td className="p-2 font-medium">{comp.name} ({comp.sku})</td>
+                                                    <td className="p-2">{comp.item_type}</td>
+                                                    <td className="p-2 text-right font-semibold">{comp.total_quantity.toFixed(2)} {comp.unit_of_measure}</td>
+                                                    <td className="p-2 text-right font-semibold">{comp.cumulative_lead_time}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 const MRPView = ({ pmpResults }) => {
     const [mrpData, setMrpData] = useState({});
     const [calculatingPmpId, setCalculatingPmpId] = useState(null);
     const [visibleResults, setVisibleResults] = useState({});
     const [error, setError] = useState('');
+    const [summaryData, setSummaryData] = useState({});
+    const [summaryLoading, setSummaryLoading] = useState({});
+    const [summaryError, setSummaryError] = useState({});
 
     const handleCalculateMRP = async (pmpToCalculate) => {
         setCalculatingPmpId(pmpToCalculate.id);
@@ -156,6 +239,28 @@ const MRPView = ({ pmpResults }) => {
             setCalculatingPmpId(null);
         }
     };
+    
+    const fetchProductionSummary = async (pmp) => {
+        setSummaryLoading(prev => ({ ...prev, [pmp.id]: true }));
+        setSummaryError(prev => ({ ...prev, [pmp.id]: null }));
+
+        const totalProduction = pmp.table.reduce((sum, row) => sum + row.planned_production_receipt, 0);
+
+        try {
+            const response = await fetch(`${API_URL}/mrp/summary/${pmp.sku}?quantity=${totalProduction}`);
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Error al obtener el resumen.');
+            }
+            const data = await response.json();
+            setSummaryData(prev => ({ ...prev, [pmp.id]: data }));
+        } catch (err) {
+            setSummaryError(prev => ({ ...prev, [pmp.id]: err.message }));
+        } finally {
+            setSummaryLoading(prev => ({ ...prev, [pmp.id]: false }));
+        }
+    };
+
 
     const toggleVisibility = (pmpId) => {
         setVisibleResults(prev => ({ ...prev, [pmpId]: !prev[pmpId] }));
@@ -212,6 +317,13 @@ const MRPView = ({ pmpResults }) => {
                                      <div className="p-4 border-t bg-gray-50 space-y-6">
                                          <OrdersTimeline orders={mrpData[pmp.id].planned_purchase_orders} title="Recomendaciones de Compra" icon={ShoppingCart} colorClass="text-green-600" />
                                          <OrdersTimeline orders={mrpData[pmp.id].planned_manufacturing_orders} title="Recomendaciones de Fabricación" icon={Package} colorClass="text-blue-600" />
+                                         <ProductionSummary
+                                            pmp={pmp}
+                                            onFetchSummary={() => fetchProductionSummary(pmp)}
+                                            summaryData={summaryData[pmp.id]}
+                                            loading={summaryLoading[pmp.id]}
+                                            error={summaryError[pmp.id]}
+                                        />
                                      </div>
                                 )}
                             </div>
