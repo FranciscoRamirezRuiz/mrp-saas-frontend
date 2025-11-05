@@ -1,5 +1,6 @@
+// src/components/views/ItemsView.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Edit, Trash2, Search, FileDown, Upload, ArrowUpDown, FilterX } from 'lucide-react';
+import { Edit, Trash2, Search, FileDown, Upload, ArrowUpDown, FilterX, CalendarClock, CheckCircle } from 'lucide-react';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -9,6 +10,7 @@ import ItemModal from '../common/ItemModal';
 import FileUploadModal from '../common/FileUploadModal';
 import ConfirmationModal from '../common/ConfirmationModal';
 import BulkEditModal from '../common/BulkEditModal';
+import ScheduledReceiptsModal from '../common/ScheduledReceiptsModal';
 
 const initialFilters = {
     status: '',
@@ -25,6 +27,7 @@ const ItemsView = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [itemToEdit, setItemToEdit] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
+    const [receiptsItem, setReceiptsItem] = useState(null); // Estado para el modal de recepciones
     const [isFileModalOpen, setIsFileModalOpen] = useState(false);
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
     const [selectedSkus, setSelectedSkus] = useState([]);
@@ -89,6 +92,7 @@ const ItemsView = () => {
 
     const handleUpdateItem = async (itemData) => {
         try {
+            // eslint-disable-next-line no-unused-vars
             const { sku, name, category, in_stock, item_type, status, ...fieldsToUpdate } = itemData;
             const response = await fetch(`${API_URL}/items/${itemData.sku}`, { 
                 method: 'PUT', 
@@ -110,12 +114,11 @@ const ItemsView = () => {
         })
         .then(response => {
             if (!response.ok) throw new Error('Error al actualizar estado.');
-            // Optimistic update to feel faster
             setItems(prevItems => prevItems.map(i => i.sku === item.sku ? { ...i, status: newStatus } : i));
         })
         .catch(err => {
             alert(`Error: ${err.message}`);
-            fetchItems(); // Revert on error
+            fetchItems();
         });
     };
     
@@ -238,7 +241,6 @@ const ItemsView = () => {
         </th>
     );
     
-    // MODIFICADO: Añadimos las nuevas cabeceras para la exportación.
     const exportHeaders = [
         { label: "SKU", key: "sku" }, { label: "Nombre", key: "name" }, { label: "Categoría", key: "category" },
         { label: "En Stock", key: "in_stock" }, { label: "Unidad", key: "unit_of_measure" }, { label: "Ubicación", key: "location" },
@@ -274,9 +276,10 @@ const ItemsView = () => {
                     onCancel={() => setIsBulkDeleteConfirmOpen(false)}
                 />
             )}
+            {/* NUEVO MODAL AÑADIDO */}
+            {receiptsItem && <ScheduledReceiptsModal item={receiptsItem} onClose={() => setReceiptsItem(null)} />}
 
             <Card title="Gestión de Ítems e Inventario">
-                {/* Barra de Búsqueda y Acciones */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div className="flex items-center gap-2 w-full md:w-1/3">
                         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems()} placeholder="Buscar por SKU o Nombre..." className="p-2 border border-slate-600 bg-white text-gray-800 rounded-lg w-full" />
@@ -291,7 +294,6 @@ const ItemsView = () => {
                     </div>
                 </div>
 
-                {/* Filtros */}
                 <div className="bg-white/10 p-4 rounded-xl shadow-inner mb-6">
                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
                          <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
@@ -324,7 +326,6 @@ const ItemsView = () => {
                      </div>
                 </div>
 
-                {/* Acciones en Lote */}
                 {selectedSkus.length > 0 && (
                     <div className="bg-indigo-900/50 border border-indigo-700 text-indigo-200 p-3 rounded-lg mb-6 flex justify-between items-center">
                         <span className="font-semibold">{selectedSkus.length} ítem(s) seleccionado(s)</span>
@@ -341,7 +342,6 @@ const ItemsView = () => {
                     </div>
                 )}
 
-                {/* Tabla de Ítems */}
                 <div className="overflow-x-auto bg-white rounded-lg shadow">
                     <table className="w-full text-sm text-left text-gray-800 border-collapse">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100">
@@ -384,7 +384,9 @@ const ItemsView = () => {
                                             </select>
                                         </div>
                                     </td>
-                                    <td className="p-3 flex gap-4">
+                                    <td className="p-3 flex gap-3">
+                                        {/* BOTÓN DE RECEPCIONES PROGRAMADAS */}
+                                        <button onClick={() => setReceiptsItem(item)} className="text-green-600 hover:text-green-800" title="Ver Recepciones Programadas"><CalendarClock size={16}/></button>
                                         <button onClick={() => setItemToEdit(item)} className="text-indigo-600 hover:text-indigo-800" title="Editar"><Edit size={16}/></button>
                                         <button onClick={() => setItemToDelete(item)} className="text-red-600 hover:text-red-800" title="Eliminar"><Trash2 size={16}/></button>
                                     </td>
