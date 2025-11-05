@@ -1,14 +1,13 @@
 // src/components/views/PMPView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, X, AlertTriangle, Send, Info, Loader } from 'lucide-react';
-import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Area, ReferenceLine } from 'recharts';
-// CORRECCIÓN: Rutas relativas
+import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Label } from 'recharts';
 import { API_URL } from '../../api/config';
 import Card from '../common/Card';
 import SearchableSelect from '../common/SearchableSelect';
 import ConfirmationModal from '../common/ConfirmationModal';
 
-// NUEVO: Componente de Tooltip (Pop-up)
+// Componente de Tooltip (Pop-up)
 const InfoTooltip = ({ text }) => (
     <span className="group relative ml-1">
         <Info size={14} className="text-gray-400 cursor-pointer" />
@@ -34,7 +33,6 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // CORREGIDO: Usa API_URL
                 const response = await fetch(`${API_URL}/items/?item_type=Producto Terminado`);
                 if (!response.ok) throw new Error('No se pudieron cargar los productos.');
                 const finishedProducts = await response.json();
@@ -48,9 +46,8 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
             }
         };
         fetchProducts();
-    }, [skusWithPrediction]); // No incluir allProducts aquí
+    }, [skusWithPrediction]);
 
-    // CORREGIDO: Lógica de fetch y guardado de PMP
     const handleGeneratePMP = async (skuToGenerate = selectedSku) => {
         if (!skuToGenerate) {
             setError('Por favor, selecciona un producto.');
@@ -60,17 +57,15 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         setError('');
 
         try {
-            // CORREGIDO: Usa API_URL y método POST
             const response = await fetch(`${API_URL}/pmp/calculate/${skuToGenerate}`, { 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}) // Enviar body vacío o con params si es necesario
+                body: JSON.stringify({})
             });
             if (!response.ok) {
                 const errData = await response.json();
                 throw new Error(errData.detail || 'Error al generar el PMP.');
             }
-            // CORREGIDO: Espera un objeto { table: [], safety_stock: 0 }
             const data = await response.json();
             const product = allProducts.find(p => p.sku === skuToGenerate);
             
@@ -78,10 +73,10 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                 id: `${skuToGenerate}-${Date.now()}`,
                 sku: skuToGenerate,
                 productName: product ? product.name : skuToGenerate,
-                // CORREGIDO: Usa data.table
                 table: data.table.map(row => ({ ...row, product_sku: skuToGenerate })),
-                // CORREGIDO: Usa data.safety_stock
-                safety_stock: data.safety_stock 
+                safety_stock: data.safety_stock,
+                // Almacenamos el inventario inicial real para el gráfico
+                initial_inventory: product ? product.in_stock : 0 
             };
 
             const existingIndex = results.findIndex(r => r.sku === skuToGenerate);
@@ -130,23 +125,27 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         }
     }, [results, activeTabId]);
     
-    // CORREGIDO: Lógica de recálculo de la tabla PMP
     const handleProductionChange = (index, newValue) => {
         if (!activePMP) return;
+        
+        const product = allProducts.find(p => p.sku === activePMP.sku);
+        if (!product) {
+            setError("No se pudo encontrar la información del producto para el recálculo.");
+            return;
+        }
+        
+        // Usamos el inventario inicial guardado en el PMP
+        const initialInventory = activePMP.initial_inventory || 0;
         const safetyStock = activePMP.safety_stock || 0;
         const newTable = [...editablePmpTable];
 
-        // Marca la fila como editada manualmente
         newTable[index] = { 
             ...newTable[index], 
             planned_production_receipt: newValue, 
-            is_manual: true // Flag para evitar recálculo automático
+            is_manual: true
         };
 
-        // Recalcular hacia adelante desde el índice cambiado
-        for (let i = index; i < newTable.length; i++) {
-            const product = allProducts.find(p => p.sku === activePMP.sku);
-            const initialInventory = product ? product.in_stock : 0;
+        for (let i = 0; i < newTable.length; i++) {
             const prevInventory = i === 0 ? initialInventory : newTable[i - 1].projected_inventory;
             
             const currentPeriod = { ...newTable[i] };
@@ -156,18 +155,26 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                             + currentPeriod.scheduled_receipts 
                                             - currentPeriod.gross_requirements;
 
-            // Solo recalcular si NO fue editado manualmente (o si es el índice actual)
-            if (!currentPeriod.is_manual || i === index) {
-                if (inventoryBeforeProduction < safetyStock) {
-                    currentPeriod.net_requirements = safetyStock - inventoryBeforeProduction;
-                    // Solo auto-llenar si no es manual
-                    if (!currentPeriod.is_manual) {
-                        currentPeriod.planned_production_receipt = currentPeriod.net_requirements;
-                    }
-                } else {
-                    currentPeriod.net_requirements = 0;
-                    if (!currentPeriod.is_manual) {
-                        currentPeriod.planned_production_receipt = 0;
+            if (i >= index) {
+                if (!currentPeriod.is_manual || i === index) {
+                    if (inventoryBeforeProduction < safetyStock) {
+                        currentPeriod.net_requirements = safetyStock - inventoryBeforeProduction;
+                        if (!currentPeriod.is_manual) {
+                            const net_req = currentPeriod.net_requirements;
+                            const policy = product.politica_lote || 'LxL';
+                            const lot_size = product.tamano_lote_fijo || 0;
+
+                            if (policy === 'FOQ' && lot_size > 0) {
+                                currentPeriod.planned_production_receipt = Math.ceil(net_req / lot_size) * lot_size;
+                            } else {
+                                currentPeriod.planned_production_receipt = net_req;
+                            }
+                        }
+                    } else {
+                        currentPeriod.net_requirements = 0;
+                        if (!currentPeriod.is_manual) {
+                            currentPeriod.planned_production_receipt = 0;
+                        }
                     }
                 }
             }
@@ -177,7 +184,6 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
             newTable[i] = currentPeriod;
         }
 
-        // Limpiar flags 'is_manual' antes de guardar en el estado
         const finalTable = newTable.map(row => {
             const { is_manual, ...rest } = row;
             return rest;
@@ -186,7 +192,6 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         setEditablePmpTable(finalTable);
     };
     
-    // NUEVO: Funciones para lanzar órdenes (Recepciones Programadas)
     const promptLaunchOrder = (periodData) => {
         if (periodData.planned_production_receipt > 0) {
             setOrderToLaunch(periodData);
@@ -200,7 +205,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         const receipt = {
             sku: sku,
             quantity: orderToLaunch.planned_production_receipt,
-            due_date: orderToLaunch.start_date, // La fecha de inicio del período es cuándo debe estar listo
+            due_date: orderToLaunch.start_date,
         };
 
         try {
@@ -216,18 +221,16 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                 throw new Error(errData.detail || 'No se pudo crear la recepción programada.');
             }
             
-            // Recargar el PMP para que muestre la nueva recepción
             await handleGeneratePMP(sku); 
 
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
-            setOrderToLaunch(null); // Close modal
+            setOrderToLaunch(null);
         }
     };
 
-    // CORREGIDO: Añadido 'planned_order_releases'
     const pmpTableRows = [
         { key: 'initial_inventory', label: 'Inventario Inicial', tooltip: 'Stock disponible al inicio del período.' },
         { key: 'gross_requirements', label: 'Pronóstico de Demanda', tooltip: 'Demanda total esperada para el período.' },
@@ -237,6 +240,53 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         { key: 'planned_production_receipt', label: 'Recepción de Producción Planificada', tooltip: 'Cantidad que debe terminarse de producir en este período.' },
         { key: 'planned_order_releases', label: 'Lanzamiento de Producción Planificado', tooltip: '¡ACCIÓN! Cuándo se debe iniciar este pedido (basado en el Lead Time).' }
     ];
+
+    // --- DATOS DEL GRÁFICO MODIFICADOS ---
+    // Aquí pre-calculamos los datos para las barras apiladas según tus nuevas reglas
+    const chartData = useMemo(() => {
+        if (!activePMP || editablePmpTable.length === 0) return [];
+        
+        const safety_stock = activePMP.safety_stock || 0;
+
+        return editablePmpTable.map(period => {
+            
+            // 1. Barra de "Suministro" (apilada)
+            // Barra Roja: Siempre es el valor del stock de seguridad
+            const stock_seguridad_rojo = safety_stock;
+            
+            // Barra Verde: Solo la porción del Inv. Inicial que está POR ENCIMA del stock de seguridad
+            const inventario_seguro_verde = Math.max(0, period.initial_inventory - safety_stock);
+            
+            // Barra Azul: Recepciones Programadas
+            const recepciones_azul = period.scheduled_receipts;
+
+            // Barra Celeste: Producción Planificada (la que editas)
+            const produccion_celeste = period.planned_production_receipt;
+
+            // 2. Barra de "Resultado" (morada)
+            const inventario_proyectado_morado = period.projected_inventory;
+
+            // 3. Línea de "Demanda" (naranja)
+            const pronostico_demanda_naranja = period.gross_requirements;
+
+            return {
+                period: period.period,
+                
+                // --- Barra de Suministro (stackId="suministro") ---
+                "Stock de Seguridad (Riesgo)": stock_seguridad_rojo,
+                "Inventario Adicional (Seguro)": inventario_seguro_verde,
+                "Recepciones Programadas": recepciones_azul,
+                "Producción Planificada": produccion_celeste,
+                
+                // --- Barra de Resultado (independiente) ---
+                "Inventario Proyectado (Resultado)": inventario_proyectado_morado,
+
+                // --- Línea de Demanda ---
+                "Pronóstico de Demanda": pronostico_demanda_naranja,
+            };
+        });
+    }, [editablePmpTable, activePMP]);
+
 
     return (
         <div className="p-8 space-y-8">
@@ -303,47 +353,62 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                          <div key={activePMP.id} className="space-y-8 animate-fadeIn">
                              <h3 className="text-lg font-bold text-gray-800">Detalle del Plan para: <span className="text-indigo-600">{activePMP.productName}</span></h3>
                              
-                             {/* GRÁFICO CORREGIDO */}
+                             {/* ================================================================== */}
+                             {/* ===== INICIO DEL GRÁFICO CON DOBLE BARRA ===== */}
+                             {/* ================================================================== */}
                              <div className="mb-8">
-                                 <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Inventario vs. Producción</h4>
-                                 <ResponsiveContainer width="100%" height={300}>
-                                     <ComposedChart data={editablePmpTable} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                         <CartesianGrid strokeDasharray="3 3" />
-                                         <XAxis dataKey="period" tick={{ fontSize: 12 }} />
-                                         <YAxis />
+                                 <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Suministro vs. Demanda</h4>
+                                 <ResponsiveContainer width="100%" height={400}>
+                                     <ComposedChart 
+                                         data={chartData} 
+                                         margin={{ top: 20, right: 20, left: -10, bottom: 5 }}
+                                         // barCategoryGap y barGap ayudan a controlar el espaciado
+                                         barCategoryGap="20%" 
+                                     >
+                                         <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                                         <XAxis dataKey="period" tick={{ fontSize: 12, fill: '#333' }} />
+                                         <YAxis tick={{ fontSize: 12, fill: '#333' }} />
                                          <Tooltip />
                                          <Legend />
+                                         
+                                         {/* 1. Línea de Riesgo (Roja) - Se mantiene como referencia visual */}
                                          <ReferenceLine 
                                              y={activePMP.safety_stock} 
-                                             label={{ value: 'Stock Seguridad', position: 'left', fill: 'red', dy: -5 }} 
-                                             stroke="red" 
-                                             strokeDasharray="5 5" // Línea punteada
-                                             strokeWidth={2} // Más gruesa
-                                         />
-                                         <Area 
-                                             type="monotone" 
-                                             dataKey="gross_requirements" 
-                                             name="Demanda (Pronóstico)" 
-                                             fill="#ef4444" // Rojo
-                                             stroke="#dc2626"
-                                             fillOpacity={0.3} // Transparencia
-                                          />
-                                          {/* Lanzamientos (Acción) en VERDE */}
-                                         <Bar dataKey="planned_order_releases" name="Lanzamiento Planificado" barSize={20} fill="#22c55e" />
-                                         {/* Recepciones (Entradas) en AZUL */}
-                                         <Bar dataKey="scheduled_receipts" name="Recepciones Programadas" barSize={20} fill="#3b82f6" />
+                                             stroke="#dc2626" // red-600
+                                             strokeDasharray="5 5"
+                                             strokeWidth={2}
+                                         >
+                                             <Label value="Stock Seguridad" position="insideTopLeft" fill="#dc2626" dy={-10} fontSize={12} fontWeight="bold" />
+                                         </ReferenceLine>
+                                         
+                                         {/* 2. BARRA APILADA: Suministro Total (stackId="suministro") */}
+                                         {/* maxBarSize controla el ancho máximo para que no sean tan anchas */}
+                                         <Bar dataKey="Stock de Seguridad (Riesgo)" stackId="suministro" fill="#ef4444" maxBarSize={40} /> {/* Rojo */}
+                                         <Bar dataKey="Inventario Adicional (Seguro)" stackId="suministro" fill="#22c55e" maxBarSize={40} /> {/* Verde */}
+                                         <Bar dataKey="Recepciones Programadas" stackId="suministro" fill="#3b82f6" maxBarSize={40} /> {/* Azul */}
+                                         <Bar dataKey="Producción Planificada" stackId="suministro" fill="#06b6d4" maxBarSize={40} /> {/* Celeste */}
+
+                                         {/* 3. BARRA INDEPENDIENTE: Resultado */}
+                                         {/* Esta es la nueva barra morada que pediste */}
+                                         <Bar dataKey="Inventario Proyectado (Resultado)" name="Inventario Proyectado" fill="#8b5cf6" maxBarSize={40} /> {/* Morado */}
+                                        
+                                         {/* 4. LÍNEA: Demanda */}
                                          <Line 
-                                             type="monotone" 
-                                             dataKey="projected_inventory" 
-                                             name="Inventario Proyectado" 
-                                             stroke="#8b5cf6" // Morado
-                                             strokeWidth={3} 
-                                             dot={{ r: 5 }}
+                                             type="monotone"
+                                             dataKey="Pronóstico de Demanda"
+                                             stroke="#f97316" // Naranja
+                                             strokeWidth={3}
+                                             dot={{ r: 5, fill: '#f97316' }}
                                              activeDot={{ r: 8 }}
-                                          />
+                                         />
+                                         
                                      </ComposedChart>
                                  </ResponsiveContainer>
                              </div>
+                             {/* ================================================================== */}
+                             {/* ===== FIN DEL GRÁFICO CON DOBLE BARRA ===== */}
+                             {/* ================================================================== */}
+
                              
                              {/* TABLA CORREGIDA */}
                              <div className="overflow-x-auto">
@@ -369,7 +434,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                 </td>
                                                 {editablePmpTable.map((period, i) => {
                                                     const value = period[key];
-                                                    const isNegative = key === 'projected_inventory' && value < activePMP.safety_stock;
+                                                    const isRisky = key === 'projected_inventory' && value < activePMP.safety_stock;
                                                     
                                                     if (key === 'planned_production_receipt') {
                                                         return (
@@ -378,7 +443,6 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                                     <input
                                                                         type="number"
                                                                         value={value}
-                                                                        // AQUÍ ESTÁ LA CORRECIÓN: int -> parseInt
                                                                         onChange={(e) => handleProductionChange(i, parseInt(e.target.value, 10) || 0)}
                                                                         onFocus={(e) => e.target.select()}
                                                                         className="w-full p-1 pr-8 text-center font-semibold bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black"
@@ -400,8 +464,8 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                     
                                                     return (
                                                         <td key={`${key}-${i}`} className={`p-3 border border-gray-200 text-center font-semibold text-gray-800
-                                                            ${isNegative ? 'text-red-600 font-bold' : ''} 
-                                                            ${key === 'scheduled_receipts' && value > 0 ? 'text-green-700' : ''}
+                                                            ${isRisky ? 'text-red-600 font-bold' : ''} 
+                                                            ${key === 'scheduled_receipts' && value > 0 ? 'text-blue-700' : ''}
                                                             ${key === 'planned_order_releases' && value > 0 ? 'text-green-700 font-bold' : ''}
                                                         `}>
                                                             {value}
