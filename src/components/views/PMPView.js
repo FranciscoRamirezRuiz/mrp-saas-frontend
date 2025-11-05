@@ -1,13 +1,13 @@
 // src/components/views/PMPView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, X, AlertTriangle, Send, Info, Loader } from 'lucide-react';
-import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, ReferenceLine, Label } from 'recharts';
+import { ComposedChart, Bar, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Label } from 'recharts';
 import { API_URL } from '../../api/config';
 import Card from '../common/Card';
 import SearchableSelect from '../common/SearchableSelect';
 import ConfirmationModal from '../common/ConfirmationModal';
 
-// Componente de Tooltip (Pop-up)
+// Componente de Tooltip para descripciones de la tabla
 const InfoTooltip = ({ text }) => (
     <span className="group relative ml-1">
         <Info size={14} className="text-gray-400 cursor-pointer" />
@@ -17,6 +17,97 @@ const InfoTooltip = ({ text }) => (
     </span>
 );
 
+// --- Colores para la leyenda ---
+const legendColors = {
+    "Stock de Seguridad (Riesgo)": "#ef4444", // Rojo
+    "inventario inicial": "#22c55e", // Verde
+    "Recepciones Programadas": "#3b82f6", // Azul
+    "Producción Planificada": "#06b6d4", // Celeste
+    "Inventario Proyectado (Resultado)": "#8b5cf6", // Morado
+    "Pronóstico de Demanda": "#f97316", // Naranja
+};
+
+// --- Descripciones de los tooltips del GRÁFICO ---
+const chartTooltipDescriptions = {
+    "Stock de Seguridad (Riesgo)": {
+        label: "Stock de Seguridad (Mínimo)",
+        description: "Es el nivel mínimo de inventario que queremos mantener para evitar interrupciones o cubrir variaciones inesperadas en la demanda o el suministro. Si el inventario proyectado cae por debajo de este nivel, hay riesgo de desabastecimiento.",
+        color: legendColors["Stock de Seguridad (Riesgo)"]
+    },
+    "inventario inicial": {
+        label: "Inventario Inicial (Excedente)",
+        description: "Representa el stock disponible al inicio de cada período que excede el Stock de Seguridad. Es un colchón que nos ayuda a cumplir la demanda sin recurrir a producción adicional inmediata.",
+        color: legendColors["inventario inicial"]
+    },
+    "Recepciones Programadas": {
+        label: "Recepciones Programadas (Llegadas)",
+        description: "Son las cantidades de producto que ya tienen una orden de fabricación o compra en curso y que esperamos recibir en un período específico. Estas ya están comprometidas y no se pueden modificar fácilmente.",
+        color: legendColors["Recepciones Programadas"]
+    },
+    "Producción Planificada": {
+        label: "Producción Planificada (Propuesta)",
+        description: "Es la cantidad de producto que se propone fabricar en este período para cubrir las necesidades netas (demanda + stock de seguridad) y mantener el inventario proyectado en niveles óptimos. Esta es la cantidad que puedes ajustar manualmente.",
+        color: legendColors["Producción Planificada"]
+    },
+    "Inventario Proyectado (Resultado)": {
+        label: "Inventario Proyectado (Final)",
+        description: "El nivel de stock estimado al final de cada período, después de considerar el inventario inicial, las recepciones, la producción planificada y la demanda. Es un indicador clave de si estamos cubriendo nuestras necesidades.",
+        color: legendColors["Inventario Proyectado (Resultado)"]
+    },
+    "Pronóstico de Demanda": {
+        label: "Pronóstico de Demanda (Esperada)",
+        description: "La cantidad de producto que se espera que los clientes soliciten en cada período. Es la base para calcular todas las necesidades de producción y recepciones.",
+        color: legendColors["Pronóstico de Demanda"]
+    },
+};
+
+// --- Componente personalizado para el Tooltip del gráfico ---
+const CustomChartTooltip = ({ active, payload, label, safetyStock }) => {
+    if (active && payload && payload.length) {
+        // Ordena los items para que "Stock de Seguridad (Riesgo)" siempre aparezca primero si está presente
+        const sortedPayload = [...payload].sort((a, b) => {
+            if (a.dataKey === "Stock de Seguridad (Riesgo)") return -1;
+            if (b.dataKey === "Stock de Seguridad (Riesgo)") return 1;
+            return 0;
+        });
+
+        // Agrupa las barras apiladas para un mejor resumen visual
+        const suministroTotal = sortedPayload.filter(item => ["Stock de Seguridad (Riesgo)", "inventario inicial", "Recepciones Programadas", "Producción Planificada"].includes(item.dataKey))
+                                              .reduce((sum, item) => sum + item.value, 0);
+
+        return (
+            <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 text-sm max-w-xs">
+                <p className="font-bold text-gray-900 mb-2 border-b pb-1">📊 {label}</p>
+                
+                {sortedPayload.map((entry, index) => {
+                    const desc = chartTooltipDescriptions[entry.dataKey];
+                    if (!desc) return null; // Si no hay descripción, no mostrar
+
+                    return (
+                        <div key={`item-${index}`} className="mb-2 last:mb-0">
+                            <p className="flex items-center font-semibold text-gray-800">
+                                <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: desc.color || entry.color }}></span>
+                                {desc.label}: <span className="ml-1 text-base font-bold" style={{ color: desc.color || entry.color }}>{entry.value}</span>
+                            </p>
+                            <p className="text-gray-600 text-xs pl-5 leading-tight">{desc.description}</p>
+                            {/* Línea de stock de seguridad para Inventario Proyectado */}
+                            {entry.dataKey === "Inventario Proyectado (Resultado)" && safetyStock !== undefined && (
+                                <p className={`text-xs pl-5 italic mt-1 ${entry.value < safetyStock ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
+                                    {entry.value < safetyStock ? `¡Alerta! Bajo Stock de Seguridad (${safetyStock})` : `Stock Seguridad: ${safetyStock}`}
+                                </p>
+                            )}
+                        </div>
+                    );
+                })}
+                {/* Puedes añadir un resumen de suministro si lo consideras útil */}
+                {/* <p className="mt-2 pt-2 border-t text-gray-700 font-medium">Suministro Total: {suministroTotal}</p> */}
+            </div>
+        );
+    }
+    return null;
+};
+
+
 const PMPView = ({ results, setResults, skusWithPrediction }) => {
     const [allProducts, setAllProducts] = useState([]);
     const [selectedSku, setSelectedSku] = useState('');
@@ -25,6 +116,16 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
     const [activeTabId, setActiveTabId] = useState(null);
     const [editablePmpTable, setEditablePmpTable] = useState([]);
     const [orderToLaunch, setOrderToLaunch] = useState(null); // State for confirmation modal
+
+    // --- Estado para la leyenda interactiva ---
+    const [visibleDataKeys, setVisibleDataKeys] = useState({
+        "Stock de Seguridad (Riesgo)": true,
+        "inventario inicial": true,
+        "Recepciones Programadas": true,
+        "Producción Planificada": true,
+        "Inventario Proyectado (Resultado)": true,
+        "Pronóstico de Demanda": true,
+    });
 
     const productsWithPrediction = useMemo(() => {
         return allProducts.filter(p => skusWithPrediction.includes(p.sku));
@@ -231,6 +332,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         }
     };
 
+    // --- MODIFICADO: Eliminado 'planned_order_releases' de la tabla ---
     const pmpTableRows = [
         { key: 'initial_inventory', label: 'Inventario Inicial', tooltip: 'Stock disponible al inicio del período.' },
         { key: 'gross_requirements', label: 'Pronóstico de Demanda', tooltip: 'Demanda total esperada para el período.' },
@@ -238,11 +340,11 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         { key: 'projected_inventory', label: 'Inventario Proyectado', tooltip: 'Stock estimado al final del período. (Inv. Inicial + Recepciones + Producción - Demanda)' },
         { key: 'net_requirements', label: 'Necesidades Netas', tooltip: 'Cantidad necesaria para cubrir la demanda y/o el Stock de Seguridad.' },
         { key: 'planned_production_receipt', label: 'Recepción de Producción Planificada', tooltip: 'Cantidad que debe terminarse de producir en este período.' },
-        { key: 'planned_order_releases', label: 'Lanzamiento de Producción Planificado', tooltip: '¡ACCIÓN! Cuándo se debe iniciar este pedido (basado en el Lead Time).' }
+        // { key: 'planned_order_releases', label: 'Lanzamiento de Producción Planificado', tooltip: '¡ACCIÓN! Cuándo se debe iniciar este pedido (basado en el Lead Time).' } // <-- Eliminado
     ];
 
     // --- DATOS DEL GRÁFICO MODIFICADOS ---
-    // Aquí pre-calculamos los datos para las barras apiladas según tus nuevas reglas
+    // --- MODIFICADO: Cambiado "Inventario Adicional (Seguro)" a "inventario inicial" ---
     const chartData = useMemo(() => {
         if (!activePMP || editablePmpTable.length === 0) return [];
         
@@ -274,7 +376,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                 
                 // --- Barra de Suministro (stackId="suministro") ---
                 "Stock de Seguridad (Riesgo)": stock_seguridad_rojo,
-                "Inventario Adicional (Seguro)": inventario_seguro_verde,
+                "inventario inicial": inventario_seguro_verde, // <-- CAMBIO DE NOMBRE
                 "Recepciones Programadas": recepciones_azul,
                 "Producción Planificada": produccion_celeste,
                 
@@ -287,6 +389,22 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
         });
     }, [editablePmpTable, activePMP]);
 
+
+    // --- NUEVO: Funciones para la leyenda interactiva ---
+    const toggleDataKey = (key) => {
+        setVisibleDataKeys(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const selectAllKeys = () => {
+        setVisibleDataKeys(prev => {
+            const allVisible = Object.values(prev).every(Boolean);
+            const newState = {};
+            Object.keys(prev).forEach(key => {
+                newState[key] = !allVisible;
+            });
+            return newState;
+        });
+    };
 
     return (
         <div className="p-8 space-y-8">
@@ -354,7 +472,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                              <h3 className="text-lg font-bold text-gray-800">Detalle del Plan para: <span className="text-indigo-600">{activePMP.productName}</span></h3>
                              
                              {/* ================================================================== */}
-                             {/* ===== INICIO DEL GRÁFICO CON DOBLE BARRA ===== */}
+                             {/* ===== INICIO DEL GRÁFICO CON LEYENDA INTERACTIVA Y TOOLTIP MEJORADO ===== */}
                              {/* ================================================================== */}
                              <div className="mb-8">
                                  <h4 className="text-md font-semibold text-gray-700 mb-2">Gráfico de Suministro vs. Demanda</h4>
@@ -362,55 +480,84 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                      <ComposedChart 
                                          data={chartData} 
                                          margin={{ top: 20, right: 20, left: -10, bottom: 5 }}
-                                         // barCategoryGap y barGap ayudan a controlar el espaciado
                                          barCategoryGap="20%" 
                                      >
                                          <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
                                          <XAxis dataKey="period" tick={{ fontSize: 12, fill: '#333' }} />
                                          <YAxis tick={{ fontSize: 12, fill: '#333' }} />
-                                         <Tooltip />
-                                         <Legend />
+                                         {/* --- MODIFICADO: Tooltip usa el componente personalizado --- */}
+                                         <Tooltip content={<CustomChartTooltip safetyStock={activePMP.safety_stock} />} />
                                          
-                                         {/* 1. Línea de Riesgo (Roja) - Se mantiene como referencia visual */}
+                                         {/* --- MODIFICADO: Mover Label de ReferenceLine fuera de la zona de solapamiento --- */}
                                          <ReferenceLine 
                                              y={activePMP.safety_stock} 
-                                             stroke="#dc2626" // red-600
+                                             stroke="#dc2626"
                                              strokeDasharray="5 5"
                                              strokeWidth={2}
                                          >
-                                             <Label value="Stock Seguridad" position="insideTopLeft" fill="#dc2626" dy={-10} fontSize={12} fontWeight="bold" />
+                                             {/* Position "right" y dy para moverla fuera del gráfico */}
+                                             <Label 
+                                                value="Stock Seguridad" 
+                                                position="right" 
+                                                fill="#dc2626" 
+                                                dy={-5} // Ajusta verticalmente
+                                                dx={10} // Ajusta horizontalmente
+                                                fontSize={12} 
+                                                fontWeight="bold" 
+                                            />
                                          </ReferenceLine>
                                          
+                                         {/* --- MODIFICADO: Barras y líneas ahora usan 'hide' --- */}
+                                         
                                          {/* 2. BARRA APILADA: Suministro Total (stackId="suministro") */}
-                                         {/* maxBarSize controla el ancho máximo para que no sean tan anchas */}
-                                         <Bar dataKey="Stock de Seguridad (Riesgo)" stackId="suministro" fill="#ef4444" maxBarSize={40} /> {/* Rojo */}
-                                         <Bar dataKey="Inventario Adicional (Seguro)" stackId="suministro" fill="#22c55e" maxBarSize={40} /> {/* Verde */}
-                                         <Bar dataKey="Recepciones Programadas" stackId="suministro" fill="#3b82f6" maxBarSize={40} /> {/* Azul */}
-                                         <Bar dataKey="Producción Planificada" stackId="suministro" fill="#06b6d4" maxBarSize={40} /> {/* Celeste */}
+                                         <Bar dataKey="Stock de Seguridad (Riesgo)" stackId="suministro" fill={legendColors["Stock de Seguridad (Riesgo)"]} maxBarSize={40} hide={!visibleDataKeys["Stock de Seguridad (Riesgo)"]} />
+                                         <Bar dataKey="inventario inicial" stackId="suministro" fill={legendColors["inventario inicial"]} maxBarSize={40} hide={!visibleDataKeys["inventario inicial"]} />
+                                         <Bar dataKey="Recepciones Programadas" stackId="suministro" fill={legendColors["Recepciones Programadas"]} maxBarSize={40} hide={!visibleDataKeys["Recepciones Programadas"]} />
+                                         <Bar dataKey="Producción Planificada" stackId="suministro" fill={legendColors["Producción Planificada"]} maxBarSize={40} hide={!visibleDataKeys["Producción Planificada"]} />
 
                                          {/* 3. BARRA INDEPENDIENTE: Resultado */}
-                                         {/* Esta es la nueva barra morada que pediste */}
-                                         <Bar dataKey="Inventario Proyectado (Resultado)" name="Inventario Proyectado" fill="#8b5cf6" maxBarSize={40} /> {/* Morado */}
+                                         <Bar dataKey="Inventario Proyectado (Resultado)" name="Inventario Proyectado" fill={legendColors["Inventario Proyectado (Resultado)"]} maxBarSize={40} hide={!visibleDataKeys["Inventario Proyectado (Resultado)"]} />
                                         
                                          {/* 4. LÍNEA: Demanda */}
                                          <Line 
                                              type="monotone"
                                              dataKey="Pronóstico de Demanda"
-                                             stroke="#f97316" // Naranja
+                                             stroke={legendColors["Pronóstico de Demanda"]}
                                              strokeWidth={3}
-                                             dot={{ r: 5, fill: '#f97316' }}
+                                             dot={{ r: 5, fill: legendColors["Pronóstico de Demanda"] }}
                                              activeDot={{ r: 8 }}
+                                             hide={!visibleDataKeys["Pronóstico de Demanda"]}
                                          />
                                          
                                      </ComposedChart>
                                  </ResponsiveContainer>
+
+                                 {/* --- Leyenda interactiva --- */}
+                                 <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mt-4">
+                                     <button
+                                        onClick={selectAllKeys}
+                                        className="px-3 py-1 text-xs font-semibold text-white bg-gray-700 rounded-full hover:bg-gray-900 transition-colors"
+                                    >
+                                        {Object.values(visibleDataKeys).every(Boolean) ? 'Deseleccionar Todos' : 'Seleccionar Todos'}
+                                    </button>
+                                    {Object.entries(legendColors).map(([key, color]) => (
+                                        <div 
+                                            key={key} 
+                                            onClick={() => toggleDataKey(key)}
+                                            className={`flex items-center gap-2 cursor-pointer p-1 rounded-md transition-opacity ${visibleDataKeys[key] ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
+                                        >
+                                            <div className="w-4 h-4 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: color }}></div>
+                                            <span className="text-xs font-medium text-gray-700">{key}</span>
+                                        </div>
+                                    ))}
+                                 </div>
                              </div>
                              {/* ================================================================== */}
-                             {/* ===== FIN DEL GRÁFICO CON DOBLE BARRA ===== */}
+                             {/* ===== FIN DEL GRÁFICO ===== */}
                              {/* ================================================================== */}
 
                              
-                             {/* TABLA CORREGIDA */}
+                             {/* --- TABLA MODIFICADA --- */}
                              <div className="overflow-x-auto">
                                  <table className="w-full text-sm text-left border-collapse">
                                      <thead className="text-xs text-gray-700 uppercase bg-gray-100">
@@ -424,7 +571,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                             <tr key={key} className={`border-b ${
                                                 key === 'projected_inventory' ? 'bg-indigo-50' : 
                                                 key === 'planned_production_receipt' ? 'bg-blue-50' : 
-                                                key === 'planned_order_releases' ? 'bg-green-50' : 'bg-white'
+                                                'bg-white' // Eliminada la clase para 'planned_order_releases'
                                             }`}>
                                                 <td className="p-3 font-medium border border-gray-200 text-gray-800">
                                                     <div className="flex items-center">
@@ -466,7 +613,7 @@ const PMPView = ({ results, setResults, skusWithPrediction }) => {
                                                         <td key={`${key}-${i}`} className={`p-3 border border-gray-200 text-center font-semibold text-gray-800
                                                             ${isRisky ? 'text-red-600 font-bold' : ''} 
                                                             ${key === 'scheduled_receipts' && value > 0 ? 'text-blue-700' : ''}
-                                                            ${key === 'planned_order_releases' && value > 0 ? 'text-green-700 font-bold' : ''}
+                                                            ${'' /* Eliminada la lógica de 'planned_order_releases' */}
                                                         `}>
                                                             {value}
                                                         </td>
