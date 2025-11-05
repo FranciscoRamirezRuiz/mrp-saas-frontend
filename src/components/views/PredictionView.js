@@ -1,7 +1,7 @@
 // src/components/views/PredictionView.js
 import React, { useState, useEffect, useMemo } from 'react';
-import { ComposedChart, Area, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LineChart } from 'recharts';
-import { Upload, CheckCircle, AlertTriangle, LineChart as LineChartIcon, Sliders, X } from 'lucide-react';
+import { ComposedChart, Area, Line, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LineChart, Brush, ReferenceLine, Label } from 'recharts';
+import { Upload, CheckCircle, AlertTriangle, LineChart as LineChartIcon, Sliders, X, BarChart2, AreaChart as AreaChartLucide } from 'lucide-react';
 import Card from '../common/Card';
 import SearchableSelect from '../common/SearchableSelect';
 import { API_URL } from '../../api/config';
@@ -30,6 +30,9 @@ const PredictionView = ({ results, setResults }) => {
     });
     
     const [activeTabSku, setActiveTabSku] = useState(null);
+    
+    // --- NUEVO: Estado para el tipo de gráfico ---
+    const [chartType, setChartType] = useState('line'); // 'line' o 'bar'
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -188,21 +191,62 @@ const PredictionView = ({ results, setResults }) => {
         return results.find(r => r.selectedSku === activeTabSku);
     }, [activeTabSku, results]);
 
+    // --- NUEVO: Calcular el promedio de ventas históricas ---
+    const averageSales = useMemo(() => {
+        if (!activeForecast) return 0;
+        
+        // Filtramos solo los puntos que tienen datos históricos
+        const historicalData = activeForecast.forecastData.filter(
+            d => d.historico !== undefined && d.historico !== null
+        );
+        
+        if (historicalData.length === 0) return 0;
 
+        // Calculamos la suma y luego el promedio
+        const sum = historicalData.reduce((acc, d) => acc + d.historico, 0);
+        return sum / historicalData.length;
+    }, [activeForecast]);
+
+
+    // --- NUEVO: Tooltip personalizado y mejorado ---
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             const date = new Date(label);
             const formattedDate = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            const data = payload[0].payload; // Obtener el objeto de datos completo del punto
+
             return (
-                <div className="bg-white p-3 border rounded-lg shadow-lg">
-                    <p className="font-semibold text-gray-800">{formattedDate}</p>
-                    {payload.map((p, i) => (
-                        <p key={i} style={{ color: p.color }}>{`${p.name}: ${p.value.toFixed(2)}`}</p>
-                    ))}
+                <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg text-gray-800">
+                    <p className="font-bold text-gray-900 mb-2">{formattedDate}</p>
+                    {data.historico !== undefined && (
+                        <p style={{ color: '#0052cc' }}>
+                            <span className="font-semibold">Histórico:</span> {data.historico.toFixed(2)}
+                        </p>
+                    )}
+                    {data.pronostico !== undefined && (
+                        <p style={{ color: '#28a745' }}>
+                            <span className="font-semibold">Pronóstico:</span> {data.pronostico.toFixed(2)}
+                        </p>
+                    )}
+                    {data.max !== undefined && (
+                         <p style={{ color: '#8884d8', fontSize: '0.9em' }}>
+                            <span className="font-semibold">Intervalo:</span> {data.min.toFixed(2)} - {data.max.toFixed(2)}
+                        </p>
+                    )}
                 </div>
             );
         }
         return null;
+    };
+    
+    // --- NUEVO: Manejador de clic en el gráfico ---
+    const handleChartClick = (data) => {
+        if (data && data.activePayload && data.activePayload.length > 0) {
+            console.log('Datos del punto clickeado:', data.activePayload[0].payload);
+            // Futura idea: Aquí se podría abrir un modal con más detalles
+            // setModalData(data.activePayload[0].payload);
+        }
     };
 
     return (
@@ -359,29 +403,152 @@ const PredictionView = ({ results, setResults }) => {
                 </div>
             )}
             
+            {/* --- SECCIÓN DEL GRÁFICO MODIFICADA --- */}
             {activeForecast && (
                 <div key={activeForecast.selectedSku} className="space-y-8 animate-fadeIn">
                     <Card title={`Resultados del Pronóstico para ${activeForecast.productName}`}>
                         <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-lg font-bold text-gray-800">Gráfico de Tendencia</h3>
-                            {activeForecast.metrics && (
-                                <div className="text-xs text-right text-gray-600 bg-gray-50 p-2 rounded-lg border">
-                                    <p><strong>Métricas del Modelo:</strong></p>
-                                    <p>MAE: <strong>{activeForecast.metrics.mae?.toFixed(2) ?? 'N/A'}</strong></p>
-                                    <p>RMSE: <strong>{activeForecast.metrics.rmse?.toFixed(2) ?? 'N/A'}</strong></p>
-                                </div>
-                            )}
+                            {/* Título y Métricas */}
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-800">Gráfico de Tendencia</h3>
+                                {activeForecast.metrics && (
+                                    <div className="text-xs text-left text-gray-600 mt-1">
+                                        <span className="mr-2"><strong>MAE:</strong> {activeForecast.metrics.mae?.toFixed(2) ?? 'N/A'}</span>
+                                        <span><strong>RMSE:</strong> {activeForecast.metrics.rmse?.toFixed(2) ?? 'N/A'}</span>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Controles de Tipo de Gráfico */}
+                            <div className="flex items-center gap-1">
+                                <span className="text-sm font-medium text-gray-600 mr-2">Ver como:</span>
+                                <button 
+                                    onClick={() => setChartType('line')} 
+                                    className={`p-2 rounded-md ${chartType === 'line' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                    title="Gráfico de Línea/Área"
+                                >
+                                    <AreaChartLucide size={16} />
+                                </button>
+                                <button 
+                                    onClick={() => setChartType('bar')} 
+                                    className={`p-2 rounded-md ${chartType === 'bar' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                    title="Gráfico de Barras"
+                                >
+                                    <BarChart2 size={16} />
+                                </button>
+                            </div>
                         </div>
+
                         <ResponsiveContainer width="100%" height={400}>
-                            <ComposedChart data={activeForecast.forecastData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="ds" tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} />
-                                <YAxis />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend />
-                                <Area type="monotone" dataKey="historico" name="Ventas Históricas" stroke="#1d4ed8" fill="#3b82f6" fillOpacity={0.6} />
-                                <Line type="monotone" dataKey="pronostico" name="Pronóstico" stroke="#16a34a" dot={false}/>
-                                <Area type="monotone" dataKey="max" name="Intervalo de Confianza" stroke="none" fill="#e5e7eb" fillOpacity={0.5} data={activeForecast.forecastData.filter(d => d.max !== undefined)} />
+                            <ComposedChart 
+                                data={activeForecast.forecastData}
+                                onClick={handleChartClick} // <-- Interacción de Clic
+                                margin={{ top: 5, right: 20, left: -10, bottom: 20 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#ccc" />
+                                <XAxis 
+                                    dataKey="ds" 
+                                    tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })} 
+                                    tick={{ fontSize: 12, fill: '#333' }}
+                                />
+                                <YAxis tick={{ fontSize: 12, fill: '#333' }} />
+                                
+                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(206, 206, 206, 0.2)' }} />
+                                
+                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                
+                                {/* --- LÍNEA DE PROMEDIO AÑADIDA --- */}
+                                {averageSales > 0 && (
+                                    <ReferenceLine y={averageSales} stroke="red" strokeDasharray="5 5" strokeWidth={2}>
+                                        <Label 
+                                            value={`Promedio Hist. (${averageSales.toFixed(2)})`} 
+                                            position="insideTopRight" 
+                                            fill="red" 
+                                            fontSize={10}
+                                            offsetY={-10} // Desplazamiento para que no se pegue a la línea
+                                        />
+                                    </ReferenceLine>
+                                )}
+            
+                                {/* --- Intervalo de Confianza (Siempre como Área) --- */}
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="max" 
+                                    name="Intervalo de Confianza" 
+                                    stroke="none" 
+                                    fill="#8884d8" // Color morado sutil
+                                    fillOpacity={0.2}
+                                    data={activeForecast.forecastData.filter(d => d.max !== undefined)}
+                                    activeDot={false}
+                                    tooltipType="none"
+                                />
+                                {/* Área inferior del intervalo (para rellenar) */}
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="min" 
+                                    name="_min" // Ocultar de la leyenda
+                                    stroke="none" 
+                                    fill="#8884d8" // Color morado sutil
+                                    fillOpacity={0.2}
+                                    data={activeForecast.forecastData.filter(d => d.min !== undefined)}
+                                    activeDot={false}
+                                    legendType="none" // Ocultar de la leyenda
+                                    tooltipType="none" // Ocultar del tooltip
+                                />
+
+                                {/* --- Renderizado Condicional del Gráfico --- */}
+                                {chartType === 'line' ? (
+                                    <>
+                                        {/* Histórico como Área */}
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="historico" 
+                                            name="Ventas Históricas" 
+                                            stroke="#0052cc" // Azul más oscuro
+                                            fill="#007bff" // Azul brillante
+                                            fillOpacity={0.6} 
+                                            activeDot={{ r: 6, stroke: '#0052cc', fill: 'white', strokeWidth: 2 }}
+                                        />
+                                        {/* Pronóstico como Línea */}
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="pronostico" 
+                                            name="Pronóstico" 
+                                            stroke="#28a745" // Verde brillante
+                                            strokeWidth={3}
+                                            dot={false}
+                                            activeDot={{ r: 6, stroke: '#28a745', fill: 'white', strokeWidth: 2 }}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* Histórico como Barras */}
+                                        <Bar 
+                                            dataKey="historico" 
+                                            name="Ventas Históricas" 
+                                            fill="#007bff" // Azul brillante
+                                            barSize={10}
+                                            activeBar={{ fill: '#0052cc' }} // Azul oscuro al pasar el mouse
+                                        />
+                                        {/* Pronóstico como Barras */}
+                                        <Bar 
+                                            dataKey="pronostico" 
+                                            name="Pronóstico" 
+                                            fill="#28a745" // Verde brillante
+                                            barSize={10}
+                                            activeBar={{ fill: '#1e7e34' }} // Verde oscuro al pasar el mouse
+                                        />
+                                    </>
+                                )}
+                                
+                                {/* --- Selector de Rango (Brush) --- */}
+                                <Brush 
+                                    dataKey="ds" 
+                                    height={30} 
+                                    stroke="#8884d8" 
+                                    fill="#f1f1f1"
+                                    tickFormatter={(time) => new Date(time).toLocaleDateString('es-ES', { month: 'short', 'year': '2-digit' })}
+                                />
                             </ComposedChart>
                         </ResponsiveContainer>
                     </Card>
