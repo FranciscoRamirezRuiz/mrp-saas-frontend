@@ -1,9 +1,10 @@
 // src/components/views/ItemsView.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Edit, Trash2, Search, FileDown, Upload, ArrowUpDown, FilterX, CalendarClock, CheckCircle } from 'lucide-react';
+import { Edit, Trash2, Search, FileDown, Upload, ArrowUpDown, FilterX, CalendarClock, ChevronDown, AlertTriangle, FileText } from 'lucide-react';
 import { CSVLink } from 'react-csv';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { API_URL } from '../../api/config';
 import Card from '../common/Card';
 import ItemModal from '../common/ItemModal';
@@ -11,6 +12,7 @@ import FileUploadModal from '../common/FileUploadModal';
 import ConfirmationModal from '../common/ConfirmationModal';
 import BulkEditModal from '../common/BulkEditModal';
 import ScheduledReceiptsModal from '../common/ScheduledReceiptsModal';
+import { formatDate } from '../../utils/formatDate'; // Importar formatDate
 
 const initialFilters = {
     status: '',
@@ -20,6 +22,133 @@ const initialFilters = {
     location: ''
 };
 
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#6b7280"];
+
+// --- NUEVO: Sub-componente de Resumen de Inventario ---
+const InventorySummary = ({ items, onFilterClick, criticalStockCount }) => {
+    
+    const statusSummary = useMemo(() => {
+        const counts = items.reduce((acc, item) => {
+            acc[item.status] = (acc[item.status] || 0) + 1;
+            return acc;
+        }, {});
+        return Object.entries(counts).map(([name, value], i) => ({
+            name, value, fill: COLORS[i % COLORS.length]
+        }));
+    }, [items]);
+
+    const typeSummary = useMemo(() => {
+        const counts = items.reduce((acc, item) => {
+            acc[item.item_type] = (acc[item.item_type] || 0) + 1;
+            return acc;
+        }, {});
+        return Object.entries(counts).map(([name, value], i) => ({
+            name, value, fill: COLORS[i % COLORS.length]
+        }));
+    }, [items]);
+    
+    const locationSummary = useMemo(() => {
+        const counts = items.reduce((acc, item) => {
+            const loc = item.location || 'Sin Ubicación';
+            acc[loc] = (acc[loc] || 0) + 1;
+            return acc;
+        }, {});
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value) // Ordenar de mayor a menor
+            .slice(0, 5); // Mostrar solo las top 5
+    }, [items]);
+
+    // Función para manejar el clic en los gráficos
+    const handlePieClick = (payload, filterKey) => {
+        if (payload && payload.name) {
+            onFilterClick(filterKey, payload.name);
+        }
+    };
+    
+    return (
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. KPI Stock Crítico */}
+                <div 
+                    className={`p-4 bg-white rounded-lg shadow-md border-l-4 ${criticalStockCount > 0 ? 'border-red-500' : 'border-green-500'} flex items-center justify-between cursor-pointer`}
+                    onClick={() => onFilterClick('critical_stock', !initialFilters.critical_stock)} // Togglea el filtro
+                >
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Ítems en Stock Crítico</p>
+                        <p className={`text-3xl font-bold ${criticalStockCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {criticalStockCount}
+                        </p>
+                    </div>
+                    <AlertTriangle size={24} className={criticalStockCount > 0 ? 'text-red-500' : 'text-gray-300'} />
+                </div>
+                
+                {/* 2. Gráfico por Estado */}
+                <div className="p-4 bg-white rounded-lg shadow-md">
+                    <h4 className="text-sm font-semibold text-gray-700 text-center mb-2">Ítems por Estado</h4>
+                    <ResponsiveContainer width="100%" height={120}>
+                        <PieChart>
+                            <Pie 
+                                data={statusSummary} 
+                                dataKey="value" 
+                                nameKey="name" 
+                                cx="50%" 
+                                cy="50%" 
+                                innerRadius={30} 
+                                outerRadius={50} 
+                                paddingAngle={3}
+                                onClick={(e) => handlePieClick(e.payload, 'status')}
+                            >
+                                {statusSummary.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} className="cursor-pointer" />)}
+                            </Pie>
+                            <Tooltip />
+                            <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{fontSize: "12px"}}/>
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+                
+                {/* 3. Gráfico por Tipo */}
+                <div className="p-4 bg-white rounded-lg shadow-md">
+                    <h4 className="text-sm font-semibold text-gray-700 text-center mb-2">Ítems por Tipo</h4>
+                    <ResponsiveContainer width="100%" height={120}>
+                        <PieChart>
+                            <Pie 
+                                data={typeSummary} 
+                                dataKey="value" 
+                                nameKey="name" 
+                                cx="50%" 
+                                cy="50%" 
+                                innerRadius={30} 
+                                outerRadius={50} 
+                                paddingAngle={3}
+                                onClick={(e) => handlePieClick(e.payload, 'item_type')}
+                            >
+                                {typeSummary.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} className="cursor-pointer" />)}
+                            </Pie>
+                            <Tooltip />
+                            <Legend iconType="circle" layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{fontSize: "12px"}}/>
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* 4. Gráfico por Ubicación (Top 5) */}
+                <div className="p-4 bg-white rounded-lg shadow-md">
+                    <h4 className="text-sm font-semibold text-gray-700 text-center mb-2">Top 5 Ubicaciones</h4>
+                     <ResponsiveContainer width="100%" height={120}>
+                        <BarChart data={locationSummary} layout="vertical" margin={{left: 20, right: 10}}>
+                            <XAxis type="number" hide />
+                            <YAxis type="category" dataKey="name" hide />
+                            <Tooltip />
+                            <Bar dataKey="value" fill="#3b82f6" background={{ fill: '#eee' }} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const ItemsView = () => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -27,7 +156,7 @@ const ItemsView = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [itemToEdit, setItemToEdit] = useState(null);
     const [itemToDelete, setItemToDelete] = useState(null);
-    const [receiptsItem, setReceiptsItem] = useState(null); // Estado para el modal de recepciones
+    const [receiptsItem, setReceiptsItem] = useState(null);
     const [isFileModalOpen, setIsFileModalOpen] = useState(false);
     const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
     const [selectedSkus, setSelectedSkus] = useState([]);
@@ -36,6 +165,11 @@ const ItemsView = () => {
     const [units, setUnits] = useState([]);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
+    
+    // --- NUEVO: Estados para Resumen y Historial ---
+    const [isSummaryOpen, setIsSummaryOpen] = useState(true);
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [uploadedFiles, setUploadedFiles] = useState([]);
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -200,11 +334,21 @@ const ItemsView = () => {
             setSelectedSkus([]);
             fetchItems();
         } catch (err) {
-            alert(`Error en la edición masiva: ${err.message || 'Falló la actualización para ' + err.sku}`);
+            alert(`Error en la edición masiva: ${err.detail || err.message || 'Falló la actualización para ' + (err.sku || 'uno o más ítems')}`);
             throw err;
         }
     };
     
+    // --- NUEVO: Callback para manejar el resumen de carga ---
+    const handleUploadSuccess = (summary) => {
+        const newFileSummary = { ...summary, uploadedAt: new Date().toISOString() };
+        const updatedFiles = [
+            newFileSummary,
+            ...uploadedFiles.filter(f => f.name !== newFileSummary.name)
+        ];
+        setUploadedFiles(updatedFiles);
+    };
+
     const selectedItemsObjects = useMemo(() => 
         items.filter(item => selectedSkus.includes(item.sku)),
         [items, selectedSkus]
@@ -223,6 +367,28 @@ const ItemsView = () => {
         }
         return sortableItems;
     }, [items, sortConfig]);
+
+    // --- NUEVO: Conteo de stock crítico ---
+    const criticalStockCount = useMemo(() => {
+        return items.filter(item => item.reorder_point !== null && item.in_stock <= item.reorder_point).length;
+    }, [items]);
+
+    // --- NUEVO: Manejador para filtro desde gráficos ---
+    const handleFilterClick = (key, value) => {
+        // Si se hace clic en el mismo filtro, se limpia. Si no, se aplica.
+        setFilters(prev => {
+            const newValue = prev[key] === value ? '' : value;
+            // Manejo especial para el booleano de stock crítico
+            if (key === 'critical_stock') {
+                const newBool = !prev.critical_stock;
+                return { ...initialFilters, critical_stock: newBool };
+            }
+            // Limpia todos los filtros y aplica el nuevo
+            return { ...initialFilters, [key]: newValue };
+        });
+        // Limpiar búsqueda para no confundir
+        setSearchQuery(''); 
+    };
 
     const requestSort = (key) => {
         let direction = 'ascending';
@@ -264,9 +430,10 @@ const ItemsView = () => {
     };
     
     return (
-        <div className="p-8">
+        <div className="p-8 space-y-6">
+            {/* --- MODIFICADO: Pasar el callback onUploadSuccess al modal --- */}
             {itemToEdit && <ItemModal item={itemToEdit} onClose={() => setItemToEdit(null)} onSave={handleUpdateItem} />}
-            {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} fetchItems={fetchItems} />}
+            {isFileModalOpen && <FileUploadModal onClose={() => setIsFileModalOpen(false)} fetchItems={fetchItems} onUploadSuccess={handleUploadSuccess} />}
             {itemToDelete && <ConfirmationModal message={`¿Seguro que quieres eliminar el ítem ${itemToDelete.sku}?`} onConfirm={() => handleDeleteItem(itemToDelete.sku)} onCancel={() => setItemToDelete(null)} />}
             {isBulkEditModalOpen && <BulkEditModal onClose={() => setIsBulkEditModalOpen(false)} onSave={handleBulkEdit} selectedItems={selectedItemsObjects} />}
             {isBulkDeleteConfirmOpen && (
@@ -276,72 +443,93 @@ const ItemsView = () => {
                     onCancel={() => setIsBulkDeleteConfirmOpen(false)}
                 />
             )}
-            {/* NUEVO MODAL AÑADIDO */}
             {receiptsItem && <ScheduledReceiptsModal item={receiptsItem} onClose={() => setReceiptsItem(null)} />}
 
             <Card title="Gestión de Ítems e Inventario">
+                {/* --- NUEVO: Botón para mostrar/ocultar resumen --- */}
+                <button 
+                    onClick={() => setIsSummaryOpen(!isSummaryOpen)} 
+                    className="flex items-center justify-between w-full p-2 mb-4 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                    <span className="font-semibold text-gray-700">Resumen Gráfico del Inventario</span>
+                    <ChevronDown size={20} className={`transition-transform ${isSummaryOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {/* --- NUEVO: Resumen Gráfico (Condicional) --- */}
+                {isSummaryOpen && !loading && (
+                    <InventorySummary 
+                        items={items} 
+                        onFilterClick={handleFilterClick} 
+                        criticalStockCount={criticalStockCount} 
+                    />
+                )}
+
+                {/* --- Controles de Búsqueda y Filtros --- */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div className="flex items-center gap-2 w-full md:w-1/3">
-                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems()} placeholder="Buscar por SKU o Nombre..." className="p-2 border border-slate-600 bg-white text-gray-800 rounded-lg w-full" />
+                        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && fetchItems()} placeholder="Buscar por SKU o Nombre..." className="p-2 border border-gray-300 bg-white text-gray-800 rounded-lg w-full" />
                         <button onClick={() => fetchItems()} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"><Search size={20}/></button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={handlePdfExport} className="flex items-center gap-2 p-2 border border-slate-600 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-600"><FileDown size={16}/>PDF</button>
-                        <CSVLink data={items} headers={exportHeaders} filename={"inventario.csv"} className="flex items-center gap-2 p-2 border border-slate-600 bg-slate-700 text-white rounded-lg text-sm hover:bg-slate-600"><FileDown size={16}/>CSV</CSVLink>
+                        <button onClick={handlePdfExport} className="flex items-center gap-2 p-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm hover:bg-gray-50"><FileDown size={16}/>PDF</button>
+                        <CSVLink data={items} headers={exportHeaders} filename={"inventario.csv"} className="flex items-center gap-2 p-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm hover:bg-gray-50"><FileDown size={16}/>CSV</CSVLink>
                         <button onClick={() => setIsFileModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700">
                             <Upload size={16}/>Importar Ítems
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-white/10 p-4 rounded-xl shadow-inner mb-6">
+                {/* --- Filtros Principales --- */}
+                <div className="bg-gray-50 p-4 rounded-lg shadow-inner mb-6 border">
                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-center">
-                         <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                         <select name="status" value={filters.status} onChange={handleFilterChange} className="p-2 border border-gray-300 bg-white text-gray-800 rounded-lg">
                              <option value="">Filtrar por Estado</option>
                              <option value="Activo">Activo</option>
                              <option value="Inactivo">Inactivo</option>
                              <option value="Obsoleto">Obsoleto</option>
                          </select>
-                         <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                         <select name="item_type" value={filters.item_type} onChange={handleFilterChange} className="p-2 border border-gray-300 bg-white text-gray-800 rounded-lg">
                              <option value="">Filtrar por Tipo</option>
                              <option value="Materia Prima">Materia Prima</option>
                              <option value="Producto Intermedio">Producto Intermedio</option>
                              <option value="Producto Terminado">Producto Terminado</option>
                          </select>
-                         <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                         <select name="unit_of_measure" value={filters.unit_of_measure} onChange={handleFilterChange} className="p-2 border border-gray-300 bg-white text-gray-800 rounded-lg">
                              <option value="">Unidad de Medida</option>
                              {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
                          </select>
-                         <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border border-slate-300 bg-white text-gray-800 rounded-lg">
+                         <select name="location" value={filters.location} onChange={handleFilterChange} className="p-2 border border-gray-300 bg-white text-gray-800 rounded-lg">
                              <option value="">Ubicación</option>
                              {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                          </select>
                          <div className="flex items-center">
-                             <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-indigo-500 border-slate-600 bg-slate-700 rounded focus:ring-indigo-500" />
-                             <label htmlFor="critical_stock" className="ml-2 block text-sm text-slate-300">Stock Crítico</label>
+                             <input type="checkbox" id="critical_stock" name="critical_stock" checked={filters.critical_stock} onChange={handleFilterChange} className="h-4 w-4 text-indigo-500 border-gray-300 rounded focus:ring-indigo-500" />
+                             <label htmlFor="critical_stock" className="ml-2 block text-sm text-gray-700">Stock Crítico</label>
                          </div>
-                          <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-white bg-slate-600 rounded-lg hover:bg-slate-500">
+                          <button onClick={clearFilters} className="flex items-center justify-center gap-2 p-2 text-sm font-semibold text-white bg-gray-600 rounded-lg hover:bg-gray-500">
                              <FilterX size={16}/>Limpiar Filtros
                          </button>
                      </div>
                 </div>
 
+                {/* --- Barra de Acciones Masivas --- */}
                 {selectedSkus.length > 0 && (
-                    <div className="bg-indigo-900/50 border border-indigo-700 text-indigo-200 p-3 rounded-lg mb-6 flex justify-between items-center">
+                    <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 p-3 rounded-lg mb-6 flex justify-between items-center">
                         <span className="font-semibold">{selectedSkus.length} ítem(s) seleccionado(s)</span>
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setIsBulkEditModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm text-indigo-200 bg-indigo-700/50 rounded-lg font-semibold hover:bg-indigo-700"><Edit size={14}/>Editar</button>
-                            <div className="border-l h-6 border-indigo-700"></div>
+                            <button onClick={() => setIsBulkEditModalOpen(true)} className="flex items-center gap-2 px-3 py-1 text-sm text-indigo-700 bg-indigo-100 rounded-lg font-semibold hover:bg-indigo-200"><Edit size={14}/>Editar</button>
+                            <div className="border-l h-6 border-indigo-200"></div>
                             <span className="text-sm">Cambiar estado a:</span>
                             <button onClick={() => handleBulkStatusChange('Activo')} className="px-2 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600">Activo</button>
                             <button onClick={() => handleBulkStatusChange('Inactivo')} className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600">Inactivo</button>
-                            <button onClick={() => handleBulkStatusChange('Obsoleto')} className="px-2 py-1 text-xs bg-yellow-500 text-white rounded-lg hover:bg-yellow-600">Obsoleto</button>
-                            <div className="border-l h-6 border-indigo-700"></div>
-                            <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-300 bg-red-800/50 rounded-lg font-semibold hover:bg-red-800"><Trash2 size={14}/>Eliminar</button>
+                            <button onClick={() => handleBulkStatusChange('Obsoleto')} className="px-2 py-1 text-xs bg-yellow-500 text-gray-800 rounded-lg hover:bg-yellow-600">Obsoleto</button>
+                            <div className="border-l h-6 border-indigo-200"></div>
+                            <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1 text-sm text-red-700 bg-red-100 rounded-lg font-semibold hover:bg-red-200"><Trash2 size={14}/>Eliminar</button>
                         </div>
                     </div>
                 )}
 
+                {/* --- Tabla de Ítems --- */}
                 <div className="overflow-x-auto bg-white rounded-lg shadow">
                     <table className="w-full text-sm text-left text-gray-800 border-collapse">
                         <thead className="text-xs text-gray-700 uppercase bg-gray-100">
@@ -363,19 +551,19 @@ const ItemsView = () => {
                                 const needsReorder = item.reorder_point !== null && item.in_stock <= item.reorder_point;
                                 const statusStyles = { 'Activo': 'bg-green-500', 'Inactivo': 'bg-red-500', 'Obsoleto': 'bg-yellow-500' };
                                 return (
-                                <tr key={item.sku} className={`border-b border-gray-200 hover:bg-gray-200 ${selectedSkus.includes(item.sku) ? 'bg-indigo-50' : ''}`}>
+                                <tr key={item.sku} className={`border-b border-gray-200 hover:bg-gray-100 ${selectedSkus.includes(item.sku) ? 'bg-indigo-50' : ''}`}>
                                     <td className="p-3 border-r border-gray-200"><input type="checkbox" checked={selectedSkus.includes(item.sku)} onChange={() => handleSelectItem(item.sku)} className="rounded" /></td>
                                     <td className="p-3 font-medium text-gray-900 border-r border-gray-200">{item.sku}</td>
                                     <td className="p-3 border-r border-gray-200">{item.name}</td>
                                     <td className="p-3 text-gray-600 border-r border-gray-200">{item.item_type}</td>
-                                    <td className={`p-3 font-semibold border-r border-gray-200 ${needsReorder ? 'text-red-600' : ''}`}>{item.in_stock} {item.unit_of_measure}</td>
+                                    <td className={`p-3 font-semibold border-r border-gray-200 ${needsReorder ? 'text-red-600 font-bold' : ''}`}>{item.in_stock} {item.unit_of_measure}</td>
                                     <td className="p-3 border-r border-gray-200">{item.location ?? 'N/A'}</td>
                                     <td className="p-3 border-r border-gray-200">
                                         <div className={`relative w-28 rounded-full ${statusStyles[item.status] || 'bg-gray-200'}`}>
                                             <select 
                                                 value={item.status} 
                                                 onChange={(e) => handleStatusChange(item, e.target.value)}
-                                                className={`w-full px-3 py-1 text-xs font-semibold text-center border-none appearance-none cursor-pointer bg-transparent ${item.status === 'Obsoleto' ? 'text-black' : 'text-white'}`}
+                                                className={`w-full px-3 py-1 text-xs font-semibold text-center border-none appearance-none cursor-pointer bg-transparent ${item.status === 'Obsoleto' ? 'text-gray-800' : 'text-white'}`}
                                                 style={{ backgroundImage: 'none' }}
                                             >
                                                 <option className="text-black bg-white" value="Activo">Activo</option>
@@ -385,7 +573,6 @@ const ItemsView = () => {
                                         </div>
                                     </td>
                                     <td className="p-3 flex gap-3">
-                                        {/* BOTÓN DE RECEPCIONES PROGRAMADAS */}
                                         <button onClick={() => setReceiptsItem(item)} className="text-green-600 hover:text-green-800" title="Ver Recepciones Programadas"><CalendarClock size={16}/></button>
                                         <button onClick={() => setItemToEdit(item)} className="text-indigo-600 hover:text-indigo-800" title="Editar"><Edit size={16}/></button>
                                         <button onClick={() => setItemToDelete(item)} className="text-red-600 hover:text-red-800" title="Eliminar"><Trash2 size={16}/></button>
@@ -397,6 +584,50 @@ const ItemsView = () => {
                     </table>
                 </div>
             </Card>
+
+            {/* --- NUEVO: Card para Historial de Cargas --- */}
+            {uploadedFiles.length > 0 && (
+                <Card title="Historial de Cargas de Ítems">
+                    <button 
+                        onClick={() => setIsHistoryOpen(!isHistoryOpen)} 
+                        className="flex items-center justify-between w-full p-2 mb-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                    >
+                        <span className="font-semibold text-gray-700">Ver archivos cargados</span>
+                        <ChevronDown size={20} className={`transition-transform ${isHistoryOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isHistoryOpen && (
+                         <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
+                            {uploadedFiles.map((file, index) => (
+                                <div key={index} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <FileText size={16} className="text-indigo-600" />
+                                            <p className="font-semibold text-gray-800">{file.name}</p>
+                                        </div>
+                                        <span className="text-xs text-gray-500">
+                                            Cargado: {formatDate(file.uploadedAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                                        <div>
+                                            <p className="text-gray-500">Filas Procesadas</p>
+                                            <p className="font-medium text-gray-800">{file.rows_processed.toLocaleString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500">Ítems Nuevos</p>
+                                            <p className="font-medium text-green-600">{file.new_items.toLocaleString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-gray-500">Ítems Actualizados</p>
+                                            <p className="font-medium text-blue-600">{file.updated_items.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+            )}
         </div>
     );
 };

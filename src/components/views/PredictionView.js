@@ -1,7 +1,7 @@
 // src/components/views/PredictionView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { ComposedChart, Area, Line, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, LineChart, Brush, ReferenceLine, Label } from 'recharts';
-import { Upload, CheckCircle, AlertTriangle, LineChart as LineChartIcon, Sliders, X, BarChart2, AreaChart as AreaChartLucide } from 'lucide-react';
+import { Upload, CheckCircle, AlertTriangle, LineChart as LineChartIcon, Sliders, X, BarChart2, AreaChart as AreaChartLucide, FileText } from 'lucide-react';
 import Card from '../common/Card';
 import SearchableSelect from '../common/SearchableSelect';
 import { API_URL } from '../../api/config';
@@ -31,6 +31,9 @@ const PredictionView = ({ results, setResults }) => {
     
     const [activeTabSku, setActiveTabSku] = useState(null);
     
+    // --- NUEVO: Estado para el historial de cargas ---
+    const [uploadedFiles, setUploadedFiles] = useState([]);
+
     // --- NUEVO: Estado para el tipo de gráfico ---
     const [chartType, setChartType] = useState('line'); // 'line' o 'bar'
 
@@ -93,7 +96,23 @@ const PredictionView = ({ results, setResults }) => {
             const response = await fetch(`${API_URL}/sales/upload?${params.toString()}`, { method: 'POST', body: formData });
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || 'Error al cargar el archivo.');
+            
             setMessage(data.message);
+
+
+            if (data.summary) {
+                const newFileSummary = { ...data.summary, uploadedAt: new Date().toISOString() };
+                
+                // Prevenir duplicados, actualizar si ya existe (pone el más nuevo al inicio)
+                const updatedFiles = [
+                    newFileSummary, 
+                    ...uploadedFiles.filter(f => f.name !== newFileSummary.name)
+                ];
+
+                setUploadedFiles(updatedFiles);
+            }
+            // --- FIN NUEVO ---
+
             setTimeout(() => setMessage(''), 5000);
         } catch (error) {
             setError(`Error: ${error.message}`);
@@ -309,6 +328,50 @@ const PredictionView = ({ results, setResults }) => {
                 {message && <p className="mt-4 text-sm text-green-700 bg-green-50 p-3 rounded-lg"><CheckCircle size={16} className="inline mr-2"/>{message}</p>}
                 {error && <div className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-lg whitespace-pre-wrap"><AlertTriangle size={16} className="inline mr-2"/>{error}</div>}
             </Card>
+
+            {/* --- NUEVO: Resumen de Archivos Cargados --- */}
+            {uploadedFiles.length > 0 && (
+                <Card title="Historial de Cargas de Ventas">
+                    <p className="text-sm text-gray-600 mb-4">
+                        Se muestra un resumen de los archivos que has cargado. El sistema fusiona automáticamente los datos de todos los archivos en una única base de datos.
+                    </p>
+                    <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
+                        {uploadedFiles.map((file, index) => (
+                            <div key={index} className="bg-gray-50 border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <FileText size={16} className="text-indigo-600" />
+                                        <p className="font-semibold text-gray-800">{file.name}</p>
+                                    </div>
+                                    <span className="text-xs text-gray-500">
+                                        Cargado: {formatDate(file.uploadedAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                    <div>
+                                        <p className="text-gray-500">Filas</p>
+                                        <p className="font-medium text-gray-800">{file.rows.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-500">SKUs Únicos</p>
+                                        <p className="font-medium text-gray-800">{file.unique_skus.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-500">Total Unidades</p>
+                                        <p className="font-medium text-gray-800">{file.total_quantity.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-gray-500">Rango de Fechas</p>
+                                        <p className="font-medium text-gray-800">
+                                            {formatDate(file.min_date)} - {formatDate(file.max_date)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
             
             <Card title="2. Generar Pronóstico de Ventas">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
