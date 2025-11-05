@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
     AlertTriangle, ChevronsRight, ShoppingCart, Package, Loader, 
-    FileDown, LayoutDashboard, List, ArrowUpDown, CheckCircle, FilterX
+    FileDown, LayoutDashboard, List, ArrowUpDown, CheckCircle, FilterX, X // Añadido X
 } from 'lucide-react';
 import { 
     ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, 
@@ -14,7 +14,7 @@ import { formatDate } from '../../utils/formatDate';
 import SearchableSelect from '../common/SearchableSelect';
 import StatCard from '../common/StatCard';
 
-// --- Componente de Resumen de Producción ---
+// --- Componente de Resumen de Producción (Sin cambios) ---
 const ProductionSummary = ({ summaryData, loading, error }) => {
     const groupedComponents = useMemo(() => {
         if (!summaryData || !summaryData.components) return {};
@@ -93,7 +93,7 @@ const ProductionSummary = ({ summaryData, loading, error }) => {
     );
 };
 
-// --- Tooltip personalizado para el Gantt ---
+// --- Tooltip personalizado para el Gantt (Sin cambios) ---
 const GanttTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
@@ -115,7 +115,7 @@ const GanttTooltip = ({ active, payload }) => {
     return null;
 };
 
-// --- Gráfico de Gantt (una barra por orden) ---
+// --- Gráfico de Gantt (Sin cambios) ---
 const MrpGanttChart = ({ data, dateRange }) => {
     const ganttData = useMemo(() => {
         // Volvemos a la lógica de una barra por orden
@@ -173,7 +173,7 @@ const MrpGanttChart = ({ data, dateRange }) => {
     );
 };
 
-// --- Tabla detallada de órdenes ---
+// --- Tabla detallada de órdenes (Sin cambios) ---
 const OrdersTable = ({ orders }) => {
     const [sortConfig, setSortConfig] = useState({ key: 'order_date', direction: 'ascending' });
 
@@ -252,7 +252,12 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
     const [loadingSummary, setLoadingSummary] = useState(false);
     const [error, setError] = useState('');
     const [summaryError, setSummaryError] = useState('');
-    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' o 'list'
+    
+    // --- NUEVO: Estado para la pestaña activa de MRP (no la sub-pestaña) ---
+    const [activeMrpId, setActiveMrpId] = useState(null);
+
+    // Estado para las sub-pestañas (dashboard/list)
+    const [activeSubTab, setActiveSubTab] = useState('dashboard');
 
     // --- Estado para el filtro de fechas ---
     const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
@@ -273,52 +278,70 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
         return pmpResults.find(p => p.id === selectedPmpId);
     }, [selectedPmpId, pmpResults]);
     
-    // --- MODIFICADO: Lee el resultado de MRP desde props ---
-    const mrpResult = useMemo(() => {
-        return mrpResults[selectedPmpId] || null;
-    }, [mrpResults, selectedPmpId]);
+    // --- MODIFICADO: Lee el resultado de MRP activo desde el array `mrpResults` ---
+    const activeMrpResult = useMemo(() => {
+        // Si no hay ID activo, pero hay resultados, activa el primero
+        if (!activeMrpId && mrpResults.length > 0) {
+            setActiveMrpId(mrpResults[0].id);
+            return mrpResults[0];
+        }
+        return mrpResults.find(r => r.id === activeMrpId);
+    }, [mrpResults, activeMrpId]);
 
-    // --- Lista base de todas las órdenes generadas ---
+    // Los datos del MRP activo (órdenes)
+    const activeMrpData = useMemo(() => activeMrpResult?.data, [activeMrpResult]);
+    // El resumen del PMP asociado a ese MRP
+    const activeSummaryData = useMemo(() => activeMrpResult?.summary, [activeMrpResult]);
+
+    // --- Lista base de todas las órdenes generadas (del MRP activo) ---
     const allGeneratedOrders = useMemo(() => {
-        if (!mrpResult) return [];
+        if (!activeMrpData) return [];
         return [
-            ...mrpResult.planned_purchase_orders, 
-            ...mrpResult.planned_manufacturing_orders
+            ...activeMrpData.planned_purchase_orders, 
+            ...activeMrpData.planned_manufacturing_orders
         ];
-    }, [mrpResult]);
+    }, [activeMrpData]);
 
-    // --- MODIFICADO: Sincroniza el estado del filtro cuando cambia el resultado ---
-        useEffect(() => {
-            if (allGeneratedOrders.length > 0) {
-                const minDate = allGeneratedOrders.reduce((min, o) => new Date(o.order_date) < min ? new Date(o.order_date) : min, new Date(allGeneratedOrders[0].order_date));
-                const maxDate = allGeneratedOrders.reduce((max, o) => new Date(o.due_date) > max ? new Date(o.due_date) : max, new Date(allGeneratedOrders[0].due_date));
-                
-                const minDateStr = minDate.toISOString().split('T')[0];
-                const maxDateStr = maxDate.toISOString().split('T')[0];
-                
-                setDateRange({ min: minDateStr, max: maxDateStr });
-                // Si el filtro está vacío, lo seteamos por defecto
-                if (!dateFilter.start && !dateFilter.end) {
-                    setDateFilter({ start: minDateStr, end: maxDateStr });
-                }
-            } else {
-                // Limpia los filtros si no hay resultado
-                setDateFilter({ start: '', end: '' });
-                setDateRange({ min: '', max: '' });
-            }
-        }, [allGeneratedOrders, dateFilter.start, dateFilter.end]); // Se ejecuta cuando cambian las órdenes o el filtro de fecha
+    // --- MODIFICADO: Sincroniza el estado del filtro cuando cambia el *MRP activo* ---
+    useEffect(() => {
+        if (allGeneratedOrders.length > 0) {
+            const minDate = allGeneratedOrders.reduce((min, o) => new Date(o.order_date) < min ? new Date(o.order_date) : min, new Date(allGeneratedOrders[0].order_date));
+            const maxDate = allGeneratedOrders.reduce((max, o) => new Date(o.due_date) > max ? new Date(o.due_date) : max, new Date(allGeneratedOrders[0].due_date));
+            
+            const minDateStr = minDate.toISOString().split('T')[0];
+            const maxDateStr = maxDate.toISOString().split('T')[0];
+            
+            setDateRange({ min: minDateStr, max: maxDateStr });
+            // Setea el filtro por defecto al rango total del MRP activo
+            setDateFilter({ start: minDateStr, end: maxDateStr });
+        } else {
+            // Limpia los filtros si no hay resultado
+            setDateFilter({ start: '', end: '' });
+            setDateRange({ min: '', max: '' });
+        }
+    }, [allGeneratedOrders]); // Se ejecuta CADA VEZ que `allGeneratedOrders` cambia (o sea, al cambiar de pestaña)
 
     // Carga el resumen de producción en cuanto se selecciona un PMP
     useEffect(() => {
         const fetchProductionSummary = async () => {
             if (!selectedPmp) {
                 setSummary(null);
+                setSummaryError('');
+                return;
+            }
+
+            // Si ya existe un MRP calculado para este PMP, no necesitamos el resumen de "staging"
+            const existingMrp = mrpResults.find(r => r.id === selectedPmp.id);
+            if (existingMrp) {
+                setSummary(null);
+                setSummaryError('');
+                setActiveMrpId(existingMrp.id); // Activa la pestaña existente
                 return;
             }
 
             setLoadingSummary(true);
             setSummaryError('');
-            // No limpiamos el resultado de MRP aquí, ya que podría existir en el estado global
+            setSummary(null); // Limpia el resumen anterior
 
             const totalProduction = selectedPmp.table.reduce((sum, row) => sum + row.planned_production_receipt, 0);
             
@@ -345,11 +368,20 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
         };
 
         fetchProductionSummary();
-    }, [selectedPmp]);
+    }, [selectedPmp, mrpResults]); // Depende de mrpResults para saber si debe mostrarse
+
+    // --- NUEVA: Función para cerrar pestañas ---
+    const handleCloseTab = (idToClose) => {
+        setMrpResults(prev => prev.filter(r => r.id !== idToClose));
+        if (activeMrpId === idToClose) {
+            const remainingTabs = mrpResults.filter(r => r.id !== idToClose);
+            setActiveMrpId(remainingTabs.length > 0 ? remainingTabs[0].id : null);
+        }
+    };
 
     // Función para calcular el MRP
     const handleCalculateMRP = async () => {
-        if (!selectedPmp) return;
+        if (!selectedPmp || !summary) return; // Requiere el PMP y el resumen
 
         setLoadingMrp(true);
         setError('');
@@ -367,12 +399,33 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
                 throw new Error(errData.detail || `Error al calcular MRP.`);
             }
             const data = await response.json();
-            // --- MODIFICADO: Guarda el resultado en App.js ---
-            setMrpResults(prev => ({
-                ...prev,
-                [selectedPmp.id]: data
-            }));
-            setActiveTab('dashboard');
+
+            // --- MODIFICADO: Guarda el resultado en el array de App.js ---
+            const newMrpResult = {
+                id: selectedPmp.id, // El ID único es el ID del PMP del que se origina
+                productName: selectedPmp.productName,
+                data: data, // El resultado del cálculo (órdenes)
+                summary: summary, // El resumen que ya habíamos cargado
+            };
+
+            setMrpResults(prev => {
+                const existingIndex = prev.findIndex(r => r.id === newMrpResult.id);
+                let newResults;
+                if (existingIndex > -1) {
+                    // Actualiza el existente
+                    newResults = [...prev];
+                    newResults[existingIndex] = newMrpResult;
+                } else {
+                    // Añade uno nuevo
+                    newResults = [...prev, newMrpResult];
+                }
+                return newResults;
+            });
+
+            setActiveMrpId(newMrpResult.id); // Activa la pestaña
+            setActiveSubTab('dashboard'); // Pone por defecto la sub-pestaña de dashboard
+            setSummary(null); // Limpia el resumen de "staging"
+            // --- FIN MODIFICADO ---
         } catch (err) {
             setError(err.message);
         } finally {
@@ -382,12 +435,20 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
     
     // Función para exportar
     const handleExport = async (format) => {
-        if (!selectedPmp) return;
+        if (!selectedPmp) return; // Sigue basándose en el PMP seleccionado (debería ser el activo)
+        
+        // --- MODIFICADO: Asegurarse de exportar el PMP de la pestaña activa ---
+        const pmpToExport = pmpResults.find(p => p.id === activeMrpId);
+        if (!pmpToExport) {
+            setError('No se encuentra el PMP activo para exportar.');
+            return;
+        }
+
         setError('');
         const endpoint = format === 'csv' ? '/mrp/export/csv' : '/mrp/export/pdf';
         
         try {
-            const payload = [{ table: selectedPmp.table }];
+            const payload = [{ table: pmpToExport.table }];
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -400,7 +461,7 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `plan_requerimientos_${selectedPmp.sku}.${format}`;
+            a.download = `plan_requerimientos_${pmpToExport.sku}.${format}`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -419,25 +480,18 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
     // --- Órdenes filtradas por fecha ---
     const filteredOrders = useMemo(() => {
         if (!allGeneratedOrders.length) return [];
-        
-        // Si no hay filtros (o están vacíos), mostrar todo
         if (!dateFilter.start || !dateFilter.end) {
             return allGeneratedOrders;
         }
-
         const startDate = new Date(dateFilter.start);
         const endDate = new Date(dateFilter.end);
-
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
-
         return allGeneratedOrders.filter(order => {
             const orderDate = new Date(order.order_date);
             const dueDate = new Date(order.due_date);
-
             const startsBeforeEnd = orderDate <= endDate;
             const endsAfterStart = dueDate >= startDate;
-            
             return startsBeforeEnd && endsAfterStart;
         });
     }, [allGeneratedOrders, dateFilter]);
@@ -484,14 +538,15 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
                             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-400 hover:bg-indigo-700"
                         >
                             {loadingMrp ? <Loader size={16} className="animate-spin" /> : <ChevronsRight size={16}/>}
-                            {loadingMrp ? 'Calculando...' : mrpResult ? 'Recalcular MRP' : 'Calcular MRP'}
+                            {loadingMrp ? 'Calculando...' : mrpResults.find(r => r.id === selectedPmpId) ? 'Recalcular MRP' : 'Calcular MRP'}
                         </button>
                     </div>
                 )}
             </Card>
 
-            {/* --- Resumen del PMP Seleccionado --- */}
-            {selectedPmp && (
+            {/* --- Resumen del PMP Seleccionado (Staging Area) --- */}
+            {/* --- MODIFICADO: Solo se muestra si hay un PMP seleccionado Y NO existe ya un resultado de MRP para él --- */}
+            {selectedPmp && !mrpResults.find(r => r.id === selectedPmpId) && (
                 <Card title={`Resumen de Producción para "${selectedPmp.productName}"`}>
                     <ProductionSummary
                         summaryData={summary}
@@ -501,156 +556,197 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
                 </Card>
             )}
 
-            {/* --- Resultados del MRP (Gráficos y Tabla) --- */}
-            {mrpResult && (
-                <Card title="Resultados del Cálculo MRP">
-                    {/* Pestañas de Navegación */}
-                    <div className="border-b border-gray-200 mb-6">
-                        <nav className="-mb-px flex space-x-6">
-                            <button 
-                                onClick={() => setActiveTab('dashboard')}
-                                className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'dashboard' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                            >
-                                <LayoutDashboard size={16} /> Resumen Gráfico
-                            </button>
-                            <button 
-                                onClick={() => setActiveTab('list')}
-                                className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeTab === 'list' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-                            >
-                                <List size={16} /> Lista Detallada de Órdenes
-                            </button>
-                        </nav>
-                    </div>
-
-                    {/* --- Filtro de RANGO DE FECHAS (se aplica a ambas pestañas) --- */}
-                    <div className="p-4 bg-gray-50 border rounded-lg mb-6">
-                        <h4 className="font-semibold text-gray-700 mb-3">Filtrar por Rango de Fechas</h4>
-                        <div className="flex flex-col md:flex-row gap-4 items-end">
-                            <div className="flex-1">
-                                <label htmlFor="start-date" className="block text-sm font-medium text-gray-600">Desde (Fecha de Lanzamiento)</label>
-                                <input
-                                    type="date"
-                                    id="start-date"
-                                    name="start"
-                                    value={dateFilter.start}
-                                    min={dateRange.min} // <-- Rango disponible
-                                    max={dateRange.max} // <-- Rango disponible
-                                    onChange={handleDateFilterChange}
-                                    className="p-2 border rounded-lg w-full mt-1 bg-white text-black"
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <label htmlFor="end-date" className="block text-sm font-medium text-gray-600">Hasta (Fecha de Vencimiento)</label>
-                                <input
-                                    type="date"
-                                    id="end-date"
-                                    name="end"
-                                    value={dateFilter.end}
-                                    min={dateRange.min} // <-- Rango disponible
-                                    max={dateRange.max} // <-- Rango disponible
-                                    onChange={handleDateFilterChange}
-                                    className="p-2 border rounded-lg w-full mt-1 bg-white text-black"
-                                />
-                            </div>
-                            <button 
-                                onClick={() => setDateFilter({ start: dateRange.min, end: dateRange.max })} 
-                                className="p-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                                title="Limpiar filtro de fechas"
-                            >
-                                <FilterX size={18} />
-                            </button>
-                        </div>
-                    </div>
+            {/* --- NUEVO: Barra de Pestañas de Resultados MRP --- */}
+            {mrpResults.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 border-b-2 border-gray-200 pb-2">
+                    {mrpResults.map(mrp => (
+                        <button
+                            key={mrp.id}
+                            onClick={() => setActiveMrpId(mrp.id)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-semibold transition-colors ${
+                                activeMrpId === mrp.id
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            }`}
+                        >
+                            {mrp.productName}
+                            <X 
+                                size={16} 
+                                className={`p-1 rounded-full ml-1 ${
+                                    activeMrpId === mrp.id ? 'hover:bg-indigo-700' : 'hover:bg-gray-400'
+                                }`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCloseTab(mrp.id);
+                                }} 
+                            />
+                        </button>
+                    ))}
+                </div>
+            )}
 
 
-                    {/* Contenido de la Pestaña */}
-                    {activeTab === 'dashboard' ? (
-                        <div className="space-y-8">
-                            {/* KPIs (Totales, no filtrados) */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <StatCard 
-                                    title="Órdenes de Compra (Total)" 
-                                    value={mrpResult.planned_purchase_orders.length} 
-                                    icon={ShoppingCart} 
-                                    colorClass="bg-green-500" 
-                                />
-                                <StatCard 
-                                    title="Órdenes de Fabricación (Total)" 
-                                    value={mrpResult.planned_manufacturing_orders.length} 
-                                    icon={Package} 
-                                    colorClass="bg-blue-500" 
-                                />
-                                <StatCard 
-                                    title="Total de Órdenes (Total)" 
-                                    value={allGeneratedOrders.length} 
-                                    icon={CheckCircle} 
-                                    colorClass="bg-indigo-500" 
-                                />
-                            </div>
+            {/* --- MODIFICADO: Resultados del MRP (Ahora depende del activeMrpId) --- */}
+            {activeMrpResult && activeMrpData && activeSummaryData && (
+                <div key={activeMrpResult.id} className="space-y-6 animate-fadeIn">
+                    
+                    {/* --- Card 1: Resumen de Producción del MRP Activo --- */}
+                    <Card title={`Resumen de Producción para "${activeMrpResult.productName}"`}>
+                        <ProductionSummary
+                            summaryData={activeSummaryData}
+                            loading={false}
+                            error={null}
+                        />
+                    </Card>
 
-                            {/* Gráficos (Pastel y Gantt) - AHORA FILTRADOS */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="lg:col-span-1">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Órdenes por Tipo (Filtradas)</h3>
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <PieChart>
-                                            <Pie 
-                                                data={pieData} 
-                                                dataKey="value" 
-                                                nameKey="name" 
-                                                cx="50%" 
-                                                cy="50%" 
-                                                outerRadius={80} 
-                                                labelLine={false}
-                                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                                            >
-                                                {pieData.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} />)}
-                                            </Pie>
-                                            <Tooltip />
-                                            <Legend iconType="circle" />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="lg:col-span-2">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Línea de Tiempo de Órdenes (Filtrada)</h3>
-                                    {filteredOrders.length > 0 ? (
-                                        <MrpGanttChart 
-                                            data={filteredOrders} 
-                                            // Pasamos el rango del filtro para alinear el eje X
-                                            dateRange={{
-                                                min: dateFilter.start || dateRange.min,
-                                                max: dateFilter.end || dateRange.max
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-gray-500">
-                                            No hay órdenes en este rango de fechas.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div>
-                            <div className="flex justify-end gap-2 mb-4">
-                                <button
-                                    onClick={() => handleExport('csv')}
-                                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                    {/* --- Card 2: Resultados del Cálculo MRP del MRP Activo --- */}
+                    <Card title="Resultados del Cálculo MRP">
+                        {/* Pestañas de Navegación (Sub-pestañas) */}
+                        <div className="border-b border-gray-200 mb-6">
+                            <nav className="-mb-px flex space-x-6">
+                                <button 
+                                    onClick={() => setActiveSubTab('dashboard')}
+                                    className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeSubTab === 'dashboard' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                                 >
-                                    <FileDown size={14}/> Exportar (Todo)
+                                    <LayoutDashboard size={16} /> Resumen Gráfico
                                 </button>
-                                <button
-                                    onClick={() => handleExport('pdf')}
-                                    className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
+                                <button 
+                                    onClick={() => setActiveSubTab('list')}
+                                    className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${activeSubTab === 'list' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
                                 >
-                                    <FileDown size={14}/> Exportar (Todo)
+                                    <List size={16} /> Lista Detallada de Órdenes
+                                </button>
+                            </nav>
+                        </div>
+
+                        {/* Filtro de RANGO DE FECHAS */}
+                        <div className="p-4 bg-gray-50 border rounded-lg mb-6">
+                            <h4 className="font-semibold text-gray-700 mb-3">Filtrar por Rango de Fechas</h4>
+                            <div className="flex flex-col md:flex-row gap-4 items-end">
+                                <div className="flex-1">
+                                    <label htmlFor="start-date" className="block text-sm font-medium text-gray-600">Desde (Fecha de Lanzamiento)</label>
+                                    <input
+                                        type="date"
+                                        id="start-date"
+                                        name="start"
+                                        value={dateFilter.start}
+                                        min={dateRange.min}
+                                        max={dateRange.max}
+                                        onChange={handleDateFilterChange}
+                                        className="p-2 border rounded-lg w-full mt-1 bg-white text-black"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label htmlFor="end-date" className="block text-sm font-medium text-gray-600">Hasta (Fecha de Vencimiento)</label>
+                                    <input
+                                        type="date"
+                                        id="end-date"
+                                        name="end"
+                                        value={dateFilter.end}
+                                        min={dateRange.min}
+                                        max={dateRange.max}
+                                        onChange={handleDateFilterChange}
+                                        className="p-2 border rounded-lg w-full mt-1 bg-white text-black"
+                                    />
+                                </div>
+                                <button 
+                                    onClick={() => setDateFilter({ start: dateRange.min, end: dateRange.max })} 
+                                    className="p-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                                    title="Limpiar filtro de fechas"
+                                >
+                                    <FilterX size={18} />
                                 </button>
                             </div>
-                            <OrdersTable orders={filteredOrders} />
                         </div>
-                    )}
 
-                </Card>
+                        {/* Contenido de la Sub-Pestaña */}
+                        {activeSubTab === 'dashboard' ? (
+                            <div className="space-y-8">
+                                {/* KPIs (Totales, no filtrados, leen de activeMrpData) */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <StatCard 
+                                        title="Órdenes de Compra (Total)" 
+                                        value={activeMrpData.planned_purchase_orders.length} 
+                                        icon={ShoppingCart} 
+                                        colorClass="bg-green-500" 
+                                    />
+                                    <StatCard 
+                                        title="Órdenes de Fabricación (Total)" 
+                                        value={activeMrpData.planned_manufacturing_orders.length} 
+                                        icon={Package} 
+                                        colorClass="bg-blue-500" 
+                                    />
+                                    <StatCard 
+                                        title="Total de Órdenes (Total)" 
+                                        value={allGeneratedOrders.length} 
+                                        icon={CheckCircle} 
+                                        colorClass="bg-indigo-500" 
+                                    />
+                                </div>
+
+                                {/* Gráficos (Pastel y Gantt) - FILTRADOS */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div className="lg:col-span-1">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Órdenes por Tipo (Filtradas)</h3>
+                                        <ResponsiveContainer width="100%" height={300}>
+                                            <PieChart>
+                                                <Pie 
+                                                    data={pieData} 
+                                                    dataKey="value" 
+                                                    nameKey="name" 
+                                                    cx="50%" 
+                                                    cy="50%" 
+                                                    outerRadius={80} 
+                                                    labelLine={false}
+                                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                                >
+                                                    {pieData.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} />)}
+                                                </Pie>
+                                                <Tooltip />
+                                                <Legend iconType="circle" />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="lg:col-span-2">
+                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Línea de Tiempo de Órdenes (Filtrada)</h3>
+                                        {filteredOrders.length > 0 ? (
+                                            <MrpGanttChart 
+                                                data={filteredOrders} 
+                                                dateRange={{
+                                                    min: dateFilter.start || dateRange.min,
+                                                    max: dateFilter.end || dateRange.max
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-gray-500">
+                                                No hay órdenes en este rango de fechas.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <div className="flex justify-end gap-2 mb-4">
+                                    <button
+                                        onClick={() => handleExport('csv')}
+                                        className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                                    >
+                                        <FileDown size={14}/> Exportar (Todo)
+                                    </button>
+                                    <button
+                                        onClick={() => handleExport('pdf')}
+                                        className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
+                                    >
+                                        <FileDown size={14}/> Exportar (Todo)
+                                    </button>
+                                </div>
+                                <OrdersTable orders={filteredOrders} />
+                            </div>
+                        )}
+
+                    </Card>
+                </div>
             )}
         </div>
     );

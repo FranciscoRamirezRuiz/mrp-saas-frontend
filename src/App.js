@@ -20,8 +20,11 @@ function App() {
     const [predictionResults, setPredictionResults] = useState([]);
     const [pmpResults, setPmpResults] = useState([]);
     
-    // 1. Mantenemos los resultados del MRP aquí
-    const [mrpResults, setMrpResults] = useState({});
+    // 1. Mantenemos los resultados del MRP aquí (MODIFICADO: AHORA ES UN ARRAY Y USA LOCALSTORAGE)
+    const [mrpResults, setMrpResults] = useState(() => {
+        const saved = localStorage.getItem('mrpResults');
+        return saved ? JSON.parse(saved) : [];
+    });
 
     // 2. Mantenemos el historial de cargas aquí (cargado desde localStorage para persistencia)
     const [uploadedItemFiles, setUploadedItemFiles] = useState(() => {
@@ -46,6 +49,13 @@ function App() {
         setUploadedSalesFiles(files);
         localStorage.setItem('uploadedSalesFiles', JSON.stringify(files));
     };
+
+    // --- NUEVA FUNCIÓN PARA GUARDAR MRP RESULTS ---
+    const setAndStoreMrpResults = (results) => {
+        setMrpResults(results);
+        localStorage.setItem('mrpResults', JSON.stringify(results));
+    };
+    // --- FIN NUEVA FUNCIÓN ---
 
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
@@ -82,8 +92,10 @@ function App() {
                                 />;
             case 'mrp_materials': return <MRPView 
                                             pmpResults={pmpResults} 
+                                            // --- MODIFICADO: Pasamos los setters correctos ---
                                             mrpResults={mrpResults}
-                                            setMrpResults={setMrpResults}
+                                            setMrpResults={setAndStoreMrpResults}
+                                            // --- FIN MODIFICADO ---
                                         />;
             case 'mrp_products': return <PlaceholderView title={getTitle(activeView)} />;
             case 'settings': return <SettingsView />;
