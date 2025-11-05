@@ -15,8 +15,37 @@ function App() {
     const [activeView, setActiveView] = useState('dashboard');
     const [showHome, setShowHome] = useState(true);
     
+    // --- ESTADO LEVANTADO ---
+    // Mantenemos los resultados de PMP y Predicciones aquí
     const [predictionResults, setPredictionResults] = useState([]);
     const [pmpResults, setPmpResults] = useState([]);
+    
+    // 1. Mantenemos los resultados del MRP aquí
+    const [mrpResults, setMrpResults] = useState({});
+
+    // 2. Mantenemos el historial de cargas aquí (cargado desde localStorage para persistencia)
+    const [uploadedItemFiles, setUploadedItemFiles] = useState(() => {
+        const saved = localStorage.getItem('uploadedItemFiles');
+        return saved ? JSON.parse(saved) : [];
+    });
+    
+    const [uploadedSalesFiles, setUploadedSalesFiles] = useState(() => {
+        const saved = localStorage.getItem('uploadedSalesFiles');
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    // --- FIN ESTADO LEVANTADO ---
+
+    // Funciones "setter" que también guardan en localStorage
+    const setAndStoreItemFiles = (files) => {
+        setUploadedItemFiles(files);
+        localStorage.setItem('uploadedItemFiles', JSON.stringify(files));
+    };
+
+    const setAndStoreSalesFiles = (files) => {
+        setUploadedSalesFiles(files);
+        localStorage.setItem('uploadedSalesFiles', JSON.stringify(files));
+    };
 
     const getTitle = (view) => ({
         'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
@@ -35,11 +64,27 @@ function App() {
 
         switch (activeView) {
             case 'dashboard': return <DashboardView />;
-            case 'items': return <ItemsView />; 
+            case 'items': return <ItemsView 
+                                    uploadedItemFiles={uploadedItemFiles} 
+                                    setUploadedItemFiles={setAndStoreItemFiles} 
+                                />; 
             case 'bom': return <BOMView />; 
-            case 'prediction': return <PredictionView results={predictionResults} setResults={setPredictionResults} />;
-            case 'pmp': return <PMPView results={pmpResults} setResults={setPmpResults} skusWithPrediction={skusWithPrediction} />;
-            case 'mrp_materials': return <MRPView pmpResults={pmpResults} />;
+            case 'prediction': return <PredictionView 
+                                        results={predictionResults} 
+                                        setResults={setPredictionResults} 
+                                        uploadedSalesFiles={uploadedSalesFiles}
+                                        setUploadedSalesFiles={setAndStoreSalesFiles}
+                                    />;
+            case 'pmp': return <PMPView 
+                                    results={pmpResults} 
+                                    setResults={setPmpResults} 
+                                    skusWithPrediction={skusWithPrediction} 
+                                />;
+            case 'mrp_materials': return <MRPView 
+                                            pmpResults={pmpResults} 
+                                            mrpResults={mrpResults}
+                                            setMrpResults={setMrpResults}
+                                        />;
             case 'mrp_products': return <PlaceholderView title={getTitle(activeView)} />;
             case 'settings': return <SettingsView />;
             default: return <PlaceholderView title={getTitle(activeView)} />;

@@ -24,7 +24,7 @@ const initialFilters = {
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#6b7280"];
 
-// --- NUEVO: Sub-componente de Resumen de Inventario ---
+// --- Sub-componente de Resumen de Inventario ---
 const InventorySummary = ({ items, onFilterClick, criticalStockCount }) => {
     
     const statusSummary = useMemo(() => {
@@ -148,8 +148,8 @@ const InventorySummary = ({ items, onFilterClick, criticalStockCount }) => {
     );
 };
 
-
-const ItemsView = () => {
+// --- MODIFICADO: Aceptar props de App.js ---
+const ItemsView = ({ uploadedItemFiles, setUploadedItemFiles }) => {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -166,10 +166,12 @@ const ItemsView = () => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
     
-    // --- NUEVO: Estados para Resumen y Historial ---
+    // --- Estados para Resumen y Historial ---
     const [isSummaryOpen, setIsSummaryOpen] = useState(true);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-    const [uploadedFiles, setUploadedFiles] = useState([]);
+    
+    // --- MODIFICADO: El estado 'uploadedFiles' ahora es 'uploadedItemFiles' y viene de props ---
+    // (Ya no se usa useState local para esto)
 
     const fetchSettings = useCallback(async () => {
         try {
@@ -339,14 +341,16 @@ const ItemsView = () => {
         }
     };
     
-    // --- NUEVO: Callback para manejar el resumen de carga ---
+    // --- MODIFICADO: Callback para manejar el resumen de carga ---
     const handleUploadSuccess = (summary) => {
         const newFileSummary = { ...summary, uploadedAt: new Date().toISOString() };
+        // Previene duplicados (basado en el nombre) y añade el más nuevo al inicio
         const updatedFiles = [
             newFileSummary,
-            ...uploadedFiles.filter(f => f.name !== newFileSummary.name)
+            ...uploadedItemFiles.filter(f => f.name !== newFileSummary.name)
         ];
-        setUploadedFiles(updatedFiles);
+        // Llama al setter de App.js (que también guarda en localStorage)
+        setUploadedItemFiles(updatedFiles);
     };
 
     const selectedItemsObjects = useMemo(() => 
@@ -368,25 +372,21 @@ const ItemsView = () => {
         return sortableItems;
     }, [items, sortConfig]);
 
-    // --- NUEVO: Conteo de stock crítico ---
+    // --- Conteo de stock crítico ---
     const criticalStockCount = useMemo(() => {
         return items.filter(item => item.reorder_point !== null && item.in_stock <= item.reorder_point).length;
     }, [items]);
 
-    // --- NUEVO: Manejador para filtro desde gráficos ---
+    // --- Manejador para filtro desde gráficos ---
     const handleFilterClick = (key, value) => {
-        // Si se hace clic en el mismo filtro, se limpia. Si no, se aplica.
         setFilters(prev => {
             const newValue = prev[key] === value ? '' : value;
-            // Manejo especial para el booleano de stock crítico
             if (key === 'critical_stock') {
                 const newBool = !prev.critical_stock;
                 return { ...initialFilters, critical_stock: newBool };
             }
-            // Limpia todos los filtros y aplica el nuevo
             return { ...initialFilters, [key]: newValue };
         });
-        // Limpiar búsqueda para no confundir
         setSearchQuery(''); 
     };
 
@@ -446,7 +446,7 @@ const ItemsView = () => {
             {receiptsItem && <ScheduledReceiptsModal item={receiptsItem} onClose={() => setReceiptsItem(null)} />}
 
             <Card title="Gestión de Ítems e Inventario">
-                {/* --- NUEVO: Botón para mostrar/ocultar resumen --- */}
+                {/* --- Botón para mostrar/ocultar resumen --- */}
                 <button 
                     onClick={() => setIsSummaryOpen(!isSummaryOpen)} 
                     className="flex items-center justify-between w-full p-2 mb-4 bg-gray-100 rounded-lg hover:bg-gray-200"
@@ -455,7 +455,7 @@ const ItemsView = () => {
                     <ChevronDown size={20} className={`transition-transform ${isSummaryOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
-                {/* --- NUEVO: Resumen Gráfico (Condicional) --- */}
+                {/* --- Resumen Gráfico (Condicional) --- */}
                 {isSummaryOpen && !loading && (
                     <InventorySummary 
                         items={items} 
@@ -585,8 +585,8 @@ const ItemsView = () => {
                 </div>
             </Card>
 
-            {/* --- NUEVO: Card para Historial de Cargas --- */}
-            {uploadedFiles.length > 0 && (
+            {/* --- MODIFICADO: Card para Historial de Cargas (ahora lee desde props) --- */}
+            {uploadedItemFiles.length > 0 && (
                 <Card title="Historial de Cargas de Ítems">
                     <button 
                         onClick={() => setIsHistoryOpen(!isHistoryOpen)} 
@@ -597,7 +597,7 @@ const ItemsView = () => {
                     </button>
                     {isHistoryOpen && (
                          <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
-                            {uploadedFiles.map((file, index) => (
+                            {uploadedItemFiles.map((file, index) => (
                                 <div key={index} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
                                     <div className="flex justify-between items-center mb-2">
                                         <div className="flex items-center gap-2">

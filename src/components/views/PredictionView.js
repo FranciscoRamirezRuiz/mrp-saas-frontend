@@ -8,7 +8,8 @@ import { API_URL } from '../../api/config';
 import { parseCSV } from '../../utils/parseCSV';
 import { formatDate } from '../../utils/formatDate';
 
-const PredictionView = ({ results, setResults }) => {
+// --- MODIFICADO: Aceptar props de App.js ---
+const PredictionView = ({ results, setResults, uploadedSalesFiles, setUploadedSalesFiles }) => {
     const [file, setFile] = useState(null);
     const [csvPreview, setCsvPreview] = useState({ headers: [], data: [] });
     const [columnMap, setColumnMap] = useState({ ds: '', y: '', sku: '' });
@@ -31,10 +32,9 @@ const PredictionView = ({ results, setResults }) => {
     
     const [activeTabSku, setActiveTabSku] = useState(null);
     
-    // --- NUEVO: Estado para el historial de cargas ---
-    const [uploadedFiles, setUploadedFiles] = useState([]);
+    // --- MODIFICADO: El estado 'uploadedFiles' ahora es 'uploadedSalesFiles' y viene de props ---
+    // (Ya no se usa useState local para esto)
 
-    // --- NUEVO: Estado para el tipo de gráfico ---
     const [chartType, setChartType] = useState('line'); // 'line' o 'bar'
 
     useEffect(() => {
@@ -99,19 +99,19 @@ const PredictionView = ({ results, setResults }) => {
             
             setMessage(data.message);
 
-
+            // --- MODIFICADO: Guardar resumen de carga en App.js ---
             if (data.summary) {
                 const newFileSummary = { ...data.summary, uploadedAt: new Date().toISOString() };
                 
-                // Prevenir duplicados, actualizar si ya existe (pone el más nuevo al inicio)
                 const updatedFiles = [
                     newFileSummary, 
-                    ...uploadedFiles.filter(f => f.name !== newFileSummary.name)
+                    ...uploadedSalesFiles.filter(f => f.name !== newFileSummary.name)
                 ];
-
-                setUploadedFiles(updatedFiles);
+                
+                // Llama al setter de App.js (que también guarda en localStorage)
+                setUploadedSalesFiles(updatedFiles);
             }
-            // --- FIN NUEVO ---
+            // --- FIN MODIFICADO ---
 
             setTimeout(() => setMessage(''), 5000);
         } catch (error) {
@@ -206,34 +206,39 @@ const PredictionView = ({ results, setResults }) => {
     };
     
     const activeForecast = useMemo(() => {
-        if (!activeTabSku) return null;
+        if (!activeTabSku) {
+            // Si no hay ninguno activo, intenta activar el primero de la lista
+            if(results.length > 0) {
+                setActiveTabSku(results[0].selectedSku);
+                return results[0];
+            }
+            return null;
+        }
         return results.find(r => r.selectedSku === activeTabSku);
     }, [activeTabSku, results]);
 
-    // --- NUEVO: Calcular el promedio de ventas históricas ---
+    // --- Calcular el promedio de ventas históricas ---
     const averageSales = useMemo(() => {
         if (!activeForecast) return 0;
         
-        // Filtramos solo los puntos que tienen datos históricos
         const historicalData = activeForecast.forecastData.filter(
             d => d.historico !== undefined && d.historico !== null
         );
         
         if (historicalData.length === 0) return 0;
 
-        // Calculamos la suma y luego el promedio
         const sum = historicalData.reduce((acc, d) => acc + d.historico, 0);
         return sum / historicalData.length;
     }, [activeForecast]);
 
 
-    // --- NUEVO: Tooltip personalizado y mejorado ---
+    // --- Tooltip personalizado y mejorado ---
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             const date = new Date(label);
             const formattedDate = date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             
-            const data = payload[0].payload; // Obtener el objeto de datos completo del punto
+            const data = payload[0].payload; 
 
             return (
                 <div className="bg-white p-4 border border-gray-300 rounded-lg shadow-lg text-gray-800">
@@ -259,12 +264,10 @@ const PredictionView = ({ results, setResults }) => {
         return null;
     };
     
-    // --- NUEVO: Manejador de clic en el gráfico ---
+    // --- Manejador de clic en el gráfico ---
     const handleChartClick = (data) => {
         if (data && data.activePayload && data.activePayload.length > 0) {
             console.log('Datos del punto clickeado:', data.activePayload[0].payload);
-            // Futura idea: Aquí se podría abrir un modal con más detalles
-            // setModalData(data.activePayload[0].payload);
         }
     };
 
@@ -329,14 +332,14 @@ const PredictionView = ({ results, setResults }) => {
                 {error && <div className="mt-4 text-sm text-red-700 bg-red-50 p-3 rounded-lg whitespace-pre-wrap"><AlertTriangle size={16} className="inline mr-2"/>{error}</div>}
             </Card>
 
-            {/* --- NUEVO: Resumen de Archivos Cargados --- */}
-            {uploadedFiles.length > 0 && (
+            {/* --- MODIFICADO: Historial de Cargas (ahora lee desde props) --- */}
+            {uploadedSalesFiles.length > 0 && (
                 <Card title="Historial de Cargas de Ventas">
                     <p className="text-sm text-gray-600 mb-4">
                         Se muestra un resumen de los archivos que has cargado. El sistema fusiona automáticamente los datos de todos los archivos en una única base de datos.
                     </p>
                     <div className="max-h-60 overflow-y-auto space-y-3 pr-2">
-                        {uploadedFiles.map((file, index) => (
+                        {uploadedSalesFiles.map((file, index) => (
                             <div key={index} className="bg-gray-50 border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-center mb-2">
                                     <div className="flex items-center gap-2">
