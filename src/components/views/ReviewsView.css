@@ -1,0 +1,160 @@
+/* src/components/views/ReviewsView.css */
+
+.reviews-view {
+    background-color: #ffffff;
+    color: #333;
+    padding: 6rem 2rem;
+    overflow-x: hidden; /* Evita desbordamiento de animaciones */
+}
+
+/* --- Cabecera de Reseñas (Texto motivador) --- */
+.reviews-header {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 5rem auto;
+    
+    /* Animación para la cabecera */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reviews-header.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.reviews-title {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    /* Efecto de gradiente dorado para el título */
+    background: linear-gradient(135deg, #f59e0b, #facc15);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent; /* Fallback */
+}
+
+.reviews-subtitle {
+    font-size: 1.25rem;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+/* --- Grid de Reseñas (Estilo Masonry/Pinterest) --- */
+.reviews-grid {
+    max-width: 1400px;
+    margin: 0 auto;
+    /* Columnas CSS para el efecto masonry */
+    column-count: 3;
+    column-gap: 1.5rem;
+}
+
+.review-card {
+    background-color: #f9fafb; /* Fondo gris muy claro */
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    /* Evita que una tarjeta se parta entre columnas */
+    break-inside: avoid;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease;
+
+    /* Animación (estado inicial) */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+/* Estado final (animado) */
+.review-card.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.review-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.07);
+}
+
+/* Estrellas Doradas */
+.star-rating {
+    display: flex;
+    gap: 0.25rem;
+    color: #f59e0b; /* Dorado/Ámbar */
+    margin-bottom: 1rem;
+}
+
+.review-text {
+    font-size: 1rem;
+    font-style: italic;
+    line-height: 1.7;
+    color: #374151;
+    margin-bottom: 1.5rem;
+    /* Para poner las comillas */
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+/* Comillas decorativas */
+.review-text::before {
+    content: '“';
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #4f46e5; /* Color índigo */
+    opacity: 0.3;
+    line-height: 1;
+}
+
+.review-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.author-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #4f46e5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.author-info h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.author-info p {
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+/* Adaptación para tablets y móviles */
+@media (max-width: 1024px) {
+    .reviews-grid {
+        column-count: 2;
+    }
+}
+
+@media (max-width: 768px) {
+    .reviews-grid {
+        column-count: 1;
+    }
+    .reviews-header {
+        margin-bottom: 3rem;
+    }
+    .reviews-title {
+        font-size: 2.5rem;
+    }
+}

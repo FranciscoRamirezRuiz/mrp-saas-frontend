@@ -1,0 +1,206 @@
+/* src/components/views/PublicHomeView.css */
+
+/* --- Sección Hero (Principal) --- */
+.home-hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 2rem 10rem 2rem;
+    background: linear-gradient(170deg, #f9fafb 0%, #f3f4f6 100%); /* Fondo gris claro */
+    overflow: hidden; /* Evita desbordamiento de animaciones */
+}
+
+.hero-content {
+    max-width: 900px;
+    /* Estado inicial para la animación */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out 0.1s, transform 0.6s ease-out 0.1s;
+}
+/* Estado final (animado) */
+.hero-content.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 800; /* Más peso */
+    color: #1f2937; /* Gris oscuro */
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem; 
+    color: #4b5563; /* Gris medio */
+    max-width: 650px; 
+    margin: 1.5rem auto 2.5rem auto;
+    line-height: 1.6;
+}
+
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+/* --- Botones Genéricos --- */
+.btn {
+    text-decoration: none;
+    padding: 0.8rem 1.75rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.btn-primary {
+    background-color: #4f46e5; /* Indigo */
+    color: white;
+}
+.btn-primary:hover {
+    background-color: #4338ca;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: #4f46e5;
+    border-color: #4f46e5;
+}
+.btn-secondary:hover {
+    background-color: #4f46e5;
+    color: white;
+    transform: translateY(-2px);
+}
+
+
+/* --- Sección de Características (Cuadros de colores) --- */
+.home-features {
+    padding: 5rem 2rem;
+    background-color: #ffffff; /* Fondo blanco */
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-card {
+    border-radius: 12px;
+    padding: 2.5rem 2rem;
+    color: white;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    
+    /* Estado inicial para la animación */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* Clase que se añade cuando el elemento es visible */
+.feature-card.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    border-radius: 50%;
+    margin-bottom: 1.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.feature-card h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.feature-card p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+/* Paleta de colores para las tarjetas */
+.feature-card--blue { background: linear-gradient(135deg, #4f46e5, #6366f1); }
+.feature-card--green { background: linear-gradient(135deg, #16a34a, #22c55e); }
+.feature-card--purple { background: linear-gradient(135deg, #7e22ce, #9333ea); }
+.feature-card--orange { background: linear-gradient(135deg, #ea580c, #f97316); }
+.feature-card--cyan { background: linear-gradient(135deg, #0891b2, #06b6d4); }
+.feature-card--red { background: linear-gradient(135deg, #dc2626, #ef4444); }
+
+
+/* --- Sección Call to Action (CTA) --- */
+.home-cta {
+    background-color: #f9fafb; /* Gris claro */
+    padding: 6rem 2rem;
+    text-align: center;
+}
+
+.cta-content {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.cta-content h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.cta-content p {
+    font-size: 1.1rem;
+    color: #4b5563;
+    margin-bottom: 2rem;
+}
+
+.btn-cta {
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+}
+
+/* Retrasos escalonados para las tarjetas */
+.feature-card.is-visible:nth-child(1) { transition-delay: 0.1s; }
+.feature-card.is-visible:nth-child(2) { transition-delay: 0.2s; }
+.feature-card.is-visible:nth-child(3) { transition-delay: 0.3s; }
+.feature-card.is-visible:nth-child(4) { transition-delay: 0.4s; }
+.feature-card.is-visible:nth-child(5) { transition-delay: 0.5s; }
+.feature-card.is-visible:nth-child(6) { transition-delay: 0.6s; }
+
+/* Media query para móviles */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+    .home-hero {
+        padding: 5rem 1.5rem 6rem 1.5rem;
+    }
+    .home-features {
+        padding: 4rem 1.5rem;
+    }
+    .cta-content h2 {
+        font-size: 2rem;
+    }
+}

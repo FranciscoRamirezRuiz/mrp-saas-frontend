@@ -1,0 +1,212 @@
+/* src/components/views/AboutUsView.css */
+
+.about-us-view {
+    background-color: #ffffff;
+    color: #333;
+    overflow: hidden; /* Previene desbordamiento de animaciones */
+}
+
+/* --- Cabecera de la Página --- */
+.about-header {
+    padding: 6rem 2rem 5rem 2rem;
+    text-align: center;
+    background-color: #f9fafb; /* Fondo gris claro */
+}
+
+.about-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    /* Efecto de gradiente de color para el título */
+    background: linear-gradient(135deg, #4f46e5, #7e22ce);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.about-subtitle {
+    font-size: 1.25rem;
+    color: #4b5563;
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* --- Contenido (Sobre el proyecto) - NUEVA ESTRUCTURA --- */
+.about-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+    display: grid;
+    /* Dos columnas: texto y visual */
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 4rem;
+}
+
+.about-content-text h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+}
+
+.about-content-text p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #374151;
+    margin-bottom: 1.5rem;
+}
+
+.about-content-visual {
+    background-color: #f3f4f6; /* Gris muy claro */
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
+    border: 1px solid #e5e7eb;
+}
+
+.about-content-visual svg {
+    /* Icono grande y de color índigo */
+    width: 100px;
+    height: 100px;
+    color: #4f46e5;
+    margin: 0 auto;
+    stroke-width: 1.5;
+}
+
+/* --- Sección del Equipo --- */
+.team-section {
+    padding: 6rem 2rem;
+    background-color: #ffffff; /* Fondo blanco */
+}
+
+.team-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 3rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.team-member {
+    text-align: center;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.team-member.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.team-photo-frame {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem auto;
+    overflow: hidden;
+    border: 6px solid #ffffff;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.team-photo-frame:hover {
+    transform: scale(1.05);
+}
+
+.team-photo-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.team-member h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.25rem;
+}
+
+.team-member p {
+    font-size: 1rem;
+    color: #4f46e5;
+    font-weight: 500;
+}
+
+/* --- NUEVO: Estilo para la Cita --- */
+.team-member-quote {
+    font-size: 0.95rem;
+    font-style: italic;
+    color: #4b5563; /* Gris medio */
+    margin-top: 1rem;
+    border-left: 3px solid #6366f1; /* Borde índigo */
+    padding-left: 1rem;
+    text-align: left;
+    min-height: 80px; /* Alto mínimo para alinear */
+}
+
+/* --- Animaciones de Scroll --- */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.fade-in-up.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Retrasos para el equipo */
+.team-member.is-visible:nth-child(1) { transition-delay: 0.1s; }
+.team-member.is-visible:nth-child(2) { transition-delay: 0.2s; }
+.team-member.is-visible:nth-child(3) { transition-delay: 0.3s; }
+
+/* Retrasos para el contenido (NUEVO) */
+.about-content-text.is-visible { transition-delay: 0.1s; }
+.about-content-visual.is-visible { transition-delay: 0.2s; }
+
+
+/* --- Adaptación para móviles --- */
+@media (max-width: 768px) {
+    /* Contenido de dos columnas pasa a una */
+    .about-content {
+        grid-template-columns: 1fr;
+        padding: 4rem 1.5rem;
+    }
+
+    /* Ocultamos el icono grande en móvil */
+    .about-content-visual {
+        display: none;
+    }
+    
+    .team-grid {
+        grid-template-columns: 1fr;
+        gap: 4rem;
+    }
+
+    .about-header {
+        padding: 4rem 1.5rem;
+    }
+
+    .about-title {
+        font-size: 2.5rem;
+    }
+
+    .team-section {
+        padding: 4rem 1.5rem;
+    }
+
+    .team-member-quote {
+        min-height: auto; /* Quitamos el alto mínimo en móvil */
+    }
+}

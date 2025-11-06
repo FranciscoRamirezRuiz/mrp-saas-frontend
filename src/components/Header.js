@@ -1,38 +1,41 @@
-// src/components/layout/Header.js
+// src/components/Header.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ChevronDown } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ChevronDown, LogOut } from 'lucide-react'; // Importar LogOut
 
-const Header = ({ activeView, setActiveView, onLogoClick }) => {
+// 1. Recibimos 'onLogout' desde App.js
+const Header = ({ onLogout }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [openSubMenu, setOpenSubMenu] = useState(null);
     const menuRef = useRef(null);
+    
+    const location = useLocation();
+    const navigate = useNavigate(); // Hook para navegar
+    const activeView = location.pathname;
 
     const navItems = [
-        { name: 'Dashboard', icon: Home, view: 'dashboard' }, 
-        { name: 'Gestión de Ítems', icon: Package, view: 'items' }, 
-        { name: 'Predicción de Ventas', icon: BrainCircuit, view: 'prediction' }, 
-        { name: 'Gestión de BOM', icon: ClipboardList, view: 'bom' },
-        { name: 'Plan Maestro', icon: Calendar, view: 'pmp' }, 
+        { name: 'Dashboard', icon: Home, view: '/dashboard' }, 
+        { name: 'Gestión de Ítems', icon: Package, view: '/items' }, 
+        { name: 'Predicción de Ventas', icon: BrainCircuit, view: '/prediction' }, 
+        { name: 'Gestión de BOM', icon: ClipboardList, view: '/bom' },
+        { name: 'Plan Maestro', icon: Calendar, view: '/pmp' }, 
         { 
-            name: 'Plan de Requerimiento de Materiales', // Nombre cambiado
-            icon: ShoppingCart,                         // Ícono original
-            view: 'mrp_materials'                       // Vista del enlace deseado
+            name: 'Plan de Requerimiento de Materiales',
+            icon: ShoppingCart,
+            view: '/mrp'
         },
-        { name: 'Configuración', icon: Settings, view: 'settings' },
+        { name: 'Configuración', icon: Settings, view: '/settings' },
     ];
     
-    const getTitle = (view) => ({
-        'dashboard': 'Dashboard General', 'items': 'Gestión de Ítems e Inventario', 'bom': 'Gestión de Lista de Materiales (BOM)', 
-        'prediction': 'Predicción de Ventas', 'pmp': 'Plan Maestro de Producción', 
-        'mrp_materials': 'Plan de Requerimiento de Materiales',
-        'settings': 'Configuración'
-    }[view] || 'Dashboard');
-
-    const handleNavClick = (view) => {
-        setActiveView(view);
-        setIsMenuOpen(false);
-        setOpenSubMenu(null);
-    };
+    const getTitle = (path) => ({
+        '/dashboard': 'Dashboard General', 
+        '/items': 'Gestión de Ítems e Inventario', 
+        '/bom': 'Gestión de Lista de Materiales (BOM)', 
+        '/prediction': 'Predicción de Ventas', 
+        '/pmp': 'Plan Maestro de Producción', 
+        '/mrp': 'Plan de Requerimiento de Materiales',
+        '/settings': 'Configuración'
+    }[path] || 'Dashboard');
 
     const handleSubMenuToggle = (itemName) => {
         setOpenSubMenu(openSubMenu === itemName ? null : itemName);
@@ -48,12 +51,22 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [menuRef]);
+    
+    const handleLinkClick = () => {
+      setIsMenuOpen(false);
+      setOpenSubMenu(null);
+    };
+    
+    // 2. Función para que el logo te lleve al dashboard
+    const handleLogoClick = () => {
+        navigate('/dashboard');
+    };
 
     return (
         <header className="relative flex items-center justify-between h-20 bg-slate-900/80 backdrop-blur-sm shadow-lg z-20 sticky top-0 px-4 md:px-8 border-b border-slate-700">
             <div 
                 className="flex items-center space-x-2 cursor-pointer"
-                onClick={onLogoClick}
+                onClick={handleLogoClick} // 3. Usamos la nueva función
             >
                 <img 
                     src="Icono_PlanFly2.png" 
@@ -74,12 +87,16 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
                         <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-2xl py-2 z-30">
                             {navItems.map((item) => (
                                 !item.subItems ? (
-                                    <button
-                                        key={item.name} onClick={() => handleNavClick(item.view)}
-                                        className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ activeView === item.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                    <Link
+                                        key={item.name} 
+                                        to={item.view}
+                                        onClick={handleLinkClick}
+                                        className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ 
+                                            activeView === item.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' 
+                                        }`}
                                     >
                                         <item.icon className="h-4 w-4 mr-3" /> {item.name}
-                                    </button>
+                                    </Link>
                                 ) : (
                                     <div key={item.name} className="border-t">
                                         <button
@@ -94,18 +111,32 @@ const Header = ({ activeView, setActiveView, onLogoClick }) => {
                                         {openSubMenu === item.name && (
                                             <div>
                                                 {item.subItems.map(subItem => (
-                                                    <button
-                                                        key={subItem.view} onClick={() => handleNavClick(subItem.view)}
-                                                        className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ activeView === subItem.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' }`}
+                                                    <Link
+                                                        key={subItem.view} 
+                                                        to={subItem.view}
+                                                        onClick={handleLinkClick}
+                                                        className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ 
+                                                            activeView === subItem.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' 
+                                                        }`}
                                                     >
                                                         <subItem.icon className="h-4 w-4 mr-3" /> {subItem.name}
-                                                    </button>
+                                                    </Link>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
                                 )
                             ))}
+                            
+                            {/* 4. Botón de Cerrar Sesión Añadido */}
+                            <div className="border-t border-gray-200 mt-2 pt-2">
+                                <button
+                                    onClick={onLogout}
+                                    className="w-full text-left flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                                >
+                                    <LogOut className="h-4 w-4 mr-3" /> Cerrar Sesión
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

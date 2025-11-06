@@ -1,8 +1,9 @@
-// src/components/views/HomeView.js
+// src/components/views/SplashScreen.js
 import React from 'react';
 import { BrainCircuit, Calendar, Package } from 'lucide-react';
 
-const HomeView = ({ onStart }) => {
+// 1. Nombre de la función cambiado
+const SplashScreen = ({ onStart }) => {
     return (
         <div
             className="relative flex flex-col items-center justify-center min-h-screen text-white p-8 overflow-hidden"
@@ -83,4 +84,5 @@ const HomeView = ({ onStart }) => {
     );
 };
 
-export default HomeView;
+// 2. Exportación cambiada
+export default SplashScreen;

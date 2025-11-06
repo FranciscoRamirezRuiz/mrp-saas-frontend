@@ -1,0 +1,70 @@
+/* src/components/Footer.css */
+.public-footer-static {
+    background-color: #0f172a; /* slate-900 */
+    color: #cbd5e1; /* slate-300 */
+    padding: 3rem 2rem 1.5rem 2rem;
+    margin-top: auto; 
+}
+
+.footer-content-static {
+    display: flex;
+    flex-wrap: wrap; 
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto 2rem auto;
+    gap: 2rem;
+}
+
+.footer-section-static {
+    flex: 1;
+    min-width: 200px; 
+}
+
+.footer-logo-static {
+    height: 40px; 
+    margin-bottom: 1rem;
+}
+
+.footer-section-static h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1.2rem;
+    color: #fff;
+}
+
+.footer-section-static p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #94a3b8; /* slate-400 */
+    margin-bottom: 0.5rem;
+}
+
+/* Párrafos en la sección de contacto y sociales */
+.footer-section-static:not(:first-child) p {
+     color: #cbd5e1;
+}
+
+.footer-bottom-static {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid #334155; /* slate-700 */
+    font-size: 0.85rem;
+    color: #94a3b8;
+    gap: 1rem;
+}
+
+.footer-bottom-static p {
+    margin: 0;
+}
+
+/* Para centrar el footer-bottom en móvil */
+@media (max-width: 768px) {
+    .footer-bottom-static {
+        flex-direction: column; 
+        justify-content: center;
+    }
+}

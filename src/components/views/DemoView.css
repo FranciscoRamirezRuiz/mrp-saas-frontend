@@ -1,0 +1,189 @@
+/* src/components/views/DemoView.css */
+
+.demo-view {
+    background-color: #f9fafb; /* Fondo gris claro */
+    padding: 6rem 2rem;
+    overflow-x: hidden;
+}
+
+/* --- Cabecera --- */
+.demo-header {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 4rem auto;
+
+    /* Animación */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.demo-header.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.demo-title {
+    font-size: 3rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.demo-subtitle {
+    font-size: 1.25rem;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+/* --- Contenido Principal (Grid de 2 columnas) --- */
+.demo-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    max-width: 1100px;
+    margin: 0 auto;
+    align-items: flex-start; /* Alinea arriba */
+}
+
+/* --- Columna Izquierda (Información) --- */
+.demo-info {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out 0.2s, transform 0.6s ease-out 0.2s;
+}
+.demo-info.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.demo-info h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+}
+
+.demo-info p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: #374151;
+    margin-bottom: 2rem;
+}
+
+.demo-features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.demo-features-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.05rem;
+    color: #374151;
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+.demo-features-list svg {
+    color: #4f46e5; /* Índigo */
+    flex-shrink: 0;
+}
+
+/* --- Columna Derecha (Formulario) --- */
+.demo-form-container {
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 2.5rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+
+    /* Animación */
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out 0.4s, transform 0.6s ease-out 0.4s;
+}
+.demo-form-container.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: #f9fafb;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 0.9rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    border: none;
+    background-color: #4f46e5; /* Índigo */
+    color: white;
+    cursor: pointer;
+}
+.btn-submit:hover {
+    background-color: #4338ca;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+}
+
+/* --- Mensaje de Éxito --- */
+.success-message {
+    padding: 2rem;
+    border: 2px solid #22c55e;
+    background-color: #f0fdf4;
+    border-radius: 12px;
+    text-align: center;
+}
+.success-message h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #166534;
+    margin-bottom: 0.5rem;
+}
+.success-message p {
+    font-size: 1rem;
+    color: #15803d;
+}
+
+/* Móvil */
+@media (max-width: 900px) {
+    .demo-content {
+        grid-template-columns: 1fr;
+    }
+}

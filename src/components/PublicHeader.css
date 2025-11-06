@@ -1,0 +1,74 @@
+/* src/components/PublicHeader.css */
+.public-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 3rem; /* Más padding horizontal */
+    background-color: #ffffff;
+    border-bottom: 1px solid #eaeaea;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+    position: sticky; /* Se mantiene al tope */
+    top: 0;
+    z-index: 100;
+}
+
+.public-header-logo img {
+    height: 60px; /* Ajusta la altura del logo */
+    width: auto;
+}
+
+.public-header-links {
+    list-style: none;
+    display: flex;
+    gap: 2.5rem; /* Más espacio entre links */
+    margin: 0;
+    padding: 0;
+}
+
+.public-header-links a {
+    text-decoration: none;
+    color: #333; /* Texto oscuro */
+    font-weight: 500;
+    font-size: 1rem;
+    transition: color 0.2s ease;
+}
+
+.public-header-links a:hover {
+    color: #4f46e5; /* Color índigo de tu app */
+}
+
+.public-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.public-header-actions a {
+    text-decoration: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.public-header-actions .btn-demo {
+    background-color: transparent;
+    color: #4f46e5;
+    border: 1px solid #4f46e5;
+}
+.public-header-actions .btn-demo:hover {
+    background-color: #4f46e5;
+    color: white;
+}
+
+.public-header-actions .btn-login {
+    background-color: #4f46e5;
+    color: white;
+    border: 1px solid #4f46e5;
+}
+
+.public-header-actions .btn-login:hover {
+    background-color: #4338ca;
+    border-color: #4338ca;
+}

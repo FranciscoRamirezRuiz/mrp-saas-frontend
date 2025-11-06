@@ -1,0 +1,32 @@
+/* src/PublicLayout.css */
+
+/* Define un layout para la parte pública */
+.public-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #ffffff; /* Fondo blanco */
+  color: #333; /* Texto oscuro por defecto */
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* El contenido principal de la página pública */
+.public-content {
+  flex-grow: 1;
+}
+
+/*
+  Aseguramos que los estilos oscuros (app-background)
+  solo apliquen al layout privado en App.js
+  y no afecten al body globalmente.
+*/
+.app-background {
+    background-color: #1a2744;
+    background-image: linear-gradient(rgba(15, 51, 136, 0.97), rgba(15, 51, 136, 0.97)), url('background_network.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: #cbd5e1;
+}

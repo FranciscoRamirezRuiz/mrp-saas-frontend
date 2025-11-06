@@ -1,6 +1,6 @@
 // src/components/common/ScheduledReceiptsModal.js
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Calendar, Loader } from 'lucide-react';
+import { X, Plus, Loader } from 'lucide-react';
 import { API_URL } from '../../api/config';
 import { formatDate } from '../../utils/formatDate';
 
