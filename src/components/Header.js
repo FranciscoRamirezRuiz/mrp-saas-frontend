@@ -1,20 +1,32 @@
 // src/components/Header.js
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Package, ClipboardList, BrainCircuit, Calendar, ShoppingCart, Settings, Menu, ChevronDown, LogOut } from 'lucide-react'; // Importar LogOut
+import { 
+    Home, // Icono de casa para "Inicio"
+    LayoutDashboard, 
+    Package, 
+    ClipboardList, 
+    BrainCircuit, 
+    Calendar, 
+    ShoppingCart, 
+    Settings, 
+    Menu, 
+    ChevronDown, 
+    LogOut 
+} from 'lucide-react';
 
-// 1. Recibimos 'onLogout' desde App.js
 const Header = ({ onLogout }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [openSubMenu, setOpenSubMenu] = useState(null);
     const menuRef = useRef(null);
     
     const location = useLocation();
-    const navigate = useNavigate(); // Hook para navegar
+    const navigate = useNavigate();
     const activeView = location.pathname;
 
     const navItems = [
-        { name: 'Dashboard', icon: Home, view: '/dashboard' }, 
+        { name: 'Inicio', icon: Home, view: '/home' }, // NUEVO ITEM
+        { name: 'Dashboard', icon: LayoutDashboard, view: '/dashboard' }, 
         { name: 'Gestión de Ítems', icon: Package, view: '/items' }, 
         { name: 'Predicción de Ventas', icon: BrainCircuit, view: '/prediction' }, 
         { name: 'Gestión de BOM', icon: ClipboardList, view: '/bom' },
@@ -28,6 +40,7 @@ const Header = ({ onLogout }) => {
     ];
     
     const getTitle = (path) => ({
+        '/home': 'Bienvenido',
         '/dashboard': 'Dashboard General', 
         '/items': 'Gestión de Ítems e Inventario', 
         '/bom': 'Gestión de Lista de Materiales (BOM)', 
@@ -35,7 +48,7 @@ const Header = ({ onLogout }) => {
         '/pmp': 'Plan Maestro de Producción', 
         '/mrp': 'Plan de Requerimiento de Materiales',
         '/settings': 'Configuración'
-    }[path] || 'Dashboard');
+    }[path] || 'PlanFly');
 
     const handleSubMenuToggle = (itemName) => {
         setOpenSubMenu(openSubMenu === itemName ? null : itemName);
@@ -57,16 +70,16 @@ const Header = ({ onLogout }) => {
       setOpenSubMenu(null);
     };
     
-    // 2. Función para que el logo te lleve al dashboard
+    // Logo lleva a HOME ahora
     const handleLogoClick = () => {
-        navigate('/dashboard');
+        navigate('/home');
     };
 
     return (
         <header className="relative flex items-center justify-between h-20 bg-slate-900/80 backdrop-blur-sm shadow-lg z-20 sticky top-0 px-4 md:px-8 border-b border-slate-700">
             <div 
                 className="flex items-center space-x-2 cursor-pointer"
-                onClick={handleLogoClick} // 3. Usamos la nueva función
+                onClick={handleLogoClick}
             >
                 <img 
                     src="Icono_PlanFly2.png" 
@@ -128,7 +141,6 @@ const Header = ({ onLogout }) => {
                                 )
                             ))}
                             
-                            {/* 4. Botón de Cerrar Sesión Añadido */}
                             <div className="border-t border-gray-200 mt-2 pt-2">
                                 <button
                                     onClick={onLogout}

@@ -11,6 +11,7 @@ import './PublicLayout.css';
 
 // --- VISTAS PRIVADAS ---
 import Header from './components/Header';
+import HomeView from './components/views/HomeView'; // <--- IMPORTAR NUEVA VISTA
 import DashboardView from './components/views/DashboardView';
 import ItemsView from './components/views/ItemsView';
 import BOMView from './components/views/BOMView';
@@ -78,7 +79,6 @@ function App() {
     };
 
     return (
-        // 1. ENVUELVE TODO CON LanguageProvider
         <LanguageProvider>
             <BrowserRouter>
                 {!token ? (
@@ -102,6 +102,9 @@ function App() {
                         <Header onLogout={handleLogout} />
                         <div className="flex-1 overflow-y-auto">
                             <Routes>
+                                {/* NUEVA RUTA PRINCIPAL */}
+                                <Route path="/home" element={<HomeView />} />
+                                
                                 <Route path="/dashboard" element={<DashboardView />} />
                                 <Route 
                                     path="/items" 
@@ -138,7 +141,9 @@ function App() {
                                 />
                                 <Route path="/settings" element={<SettingsView />} />
                                 <Route path="/mrp_products" element={<PlaceholderView title="Plan de Requerimiento de Productos" />} />
-                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                                
+                                {/* REDIRECCIONAR A HOME POR DEFECTO */}
+                                <Route path="*" element={<Navigate to="/home" replace />} />
                             </Routes>
                         </div>
                     </div>

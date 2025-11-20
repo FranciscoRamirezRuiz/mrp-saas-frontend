@@ -1,0 +1,148 @@
+/* src/components/views/HomeView.css */
+
+.home-view-container {
+    padding: 4rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* --- Cabecera de Bienvenida --- */
+.welcome-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.welcome-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #f8fafc;
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.welcome-subtitle {
+    font-size: 1.25rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* --- Grilla de Módulos --- */
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+/* --- Tarjetas Estilo Glass --- */
+.module-card {
+    background: rgba(30, 41, 59, 0.4); /* Fondo oscuro translúcido */
+    backdrop-filter: blur(12px);
+    border-width: 1px;
+    border-style: solid;
+    /* El color del borde viene de la clase dinámica en JS */
+    border-radius: 24px;
+    padding: 2rem;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.module-card:hover {
+    transform: translateY(-8px);
+    background: rgba(30, 41, 59, 0.7);
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Efecto de brillo al hover */
+.module-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.module-card:hover::before {
+    opacity: 1;
+}
+
+/* --- Iconos --- */
+.icon-wrapper {
+    padding: 1.2rem;
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+    transition: transform 0.3s ease;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+}
+
+.module-card:hover .icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
+}
+
+/* --- Textos de la Tarjeta --- */
+.module-info h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 0.75rem;
+}
+
+.module-info p {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+/* --- Animaciones de Entrada --- */
+.fade-in-up {
+    animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.delay-100 {
+    animation-delay: 0.15s;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .home-view-container {
+        padding: 2rem 1.5rem;
+    }
+    .welcome-title {
+        font-size: 2.5rem;
+    }
+    .modules-grid {
+        grid-template-columns: 1fr; /* Una columna en móvil */
+    }
+}
