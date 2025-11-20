@@ -1,15 +1,17 @@
+// src/components/PublicHeader.js
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext'; // Importar hook
 import './PublicHeader.css';
-
-// import logoImg from '../assets/logo.png'; 
 
 const PublicHeader = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  
+  // Obtener la función de traducción del contexto
+  const { t } = useLanguage();
 
-  // Detectar scroll para cambiar el estilo de la barra
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -18,46 +20,47 @@ const PublicHeader = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Cerrar menú móvil automáticamente al cambiar de ruta
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location]);
 
+  const getLinkClass = (path) => {
+    const currentPath = decodeURIComponent(location.pathname);
+    return currentPath === path ? 'nav-item active' : 'nav-item';
+  };
+
   return (
     <header className={`glass-header ${isScrolled ? 'scrolled' : ''}`}>
       <div className="header-content">
-        {/* LOGO */}
         <Link to="/" className="logo-container">
           <div className="logo-icon" /> 
-          <span className="logo-text">DemandFlow</span>
+          <span className="logo-text">PlanFly</span>
         </Link>
 
-        {/* NAVEGACIÓN */}
         <nav className={`nav-links ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-          <Link to="/" className="nav-item">Inicio</Link>
+          {/* Reemplazar textos duros por la función t() */}
+          <Link to="/" className={getLinkClass('/')}>{t('nav_home')}</Link>
           
-          {/* RUTAS EN ESPAÑOL (Coinciden con App.js) */}
-          <Link to="/planes" className="nav-item">Planes</Link>
-          <Link to="/quienes-somos" className="nav-item">Nosotros</Link>
-          <Link to="/reseñas" className="nav-item">Reseñas</Link>
+          <Link to="/planes" className={getLinkClass('/planes')}>{t('nav_pricing')}</Link>
           
-          <Link to="/demo" className="nav-item">Demo</Link>
+          <Link to="/quienes-somos" className={getLinkClass('/quienes-somos')}>{t('nav_about')}</Link>
           
-          {/* Botón CTA Móvil */}
+          <Link to="/reseñas" className={getLinkClass('/reseñas')}>{t('nav_reviews')}</Link>
+          
+          <Link to="/demo" className={getLinkClass('/demo')}>{t('nav_demo')}</Link>
+          
           <div className="mobile-cta-container mobile-only">
              <Link to="/login" className="nav-cta-button">
-               Comenzar
+               {t('nav_start')}
              </Link>
           </div>
         </nav>
 
-        {/* ACCIONES (Escritorio) */}
         <div className="header-actions">
           <Link to="/login" className="nav-cta-button desktop-only">
-            Comenzar
+            {t('nav_start')}
           </Link>
           
-          {/* Botón Hamburguesa */}
           <button 
             className={`menu-toggle ${mobileMenuOpen ? 'open' : ''}`} 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

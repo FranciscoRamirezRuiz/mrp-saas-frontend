@@ -2,11 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
+// --- IMPORTAR EL PROVEEDOR DE IDIOMA ---
+import { LanguageProvider } from './context/LanguageContext'; 
+
 // --- Estilos ---
 import './App.css'; 
 import './PublicLayout.css'; 
 
-// --- VISTAS PRIVADAS (LA APP INTERNA) ---
+// --- VISTAS PRIVADAS ---
 import Header from './components/Header';
 import DashboardView from './components/views/DashboardView';
 import ItemsView from './components/views/ItemsView';
@@ -17,7 +20,7 @@ import MRPView from './components/views/MRPView';
 import SettingsView from './components/views/SettingsView';
 import PlaceholderView from './components/views/PlaceholderView';
 
-// --- VISTAS PÚBLICAS (EL NUEVO LANDING SITE) ---
+// --- VISTAS PÚBLICAS ---
 import PublicHeader from './components/PublicHeader';
 import PublicHomeView from './components/views/PublicHomeView'; 
 import LoginView from './components/views/LoginView';
@@ -26,7 +29,6 @@ import PricingView from './components/views/PricingView';
 import ReviewsView from './components/views/ReviewsView';
 import DemoView from './components/views/DemoView';
 import Footer from './components/Footer'; 
-// (Se eliminaron las importaciones de TermsView y PrivacyView)
 
 function App() {
     const [token, setToken] = useState(localStorage.getItem('token'));
@@ -39,7 +41,7 @@ function App() {
         }
     }, [token]);
 
-    // --- ESTADO LEVANTADO (Se mantiene igual) ---
+    // --- ESTADO LEVANTADO ---
     const [predictionResults, setPredictionResults] = useState([]);
     const [pmpResults, setPmpResults] = useState([]);
     const [mrpResults, setMrpResults] = useState(() => {
@@ -66,7 +68,6 @@ function App() {
         setMrpResults(results);
         localStorage.setItem('mrpResults', JSON.stringify(results));
     };
-    // --- FIN ESTADO LEVANTADO ---
 
     const handleLoginSuccess = (newToken) => {
         setToken(newToken);
@@ -77,73 +78,73 @@ function App() {
     };
 
     return (
-        <BrowserRouter>
-            {!token ? (
-                // --- RUTAS PÚBLICAS (Si NO hay token) ---
-                <div className="public-layout">
-                    <PublicHeader />
-                    <main className="public-content">
-                        <Routes>
-                            <Route path="/" element={<PublicHomeView />} />
-                            <Route path="/login" element={<LoginView onLoginSuccess={handleLoginSuccess} />} />
-                            <Route path="/quienes-somos" element={<AboutUsView />} />
-                            <Route path="/planes" element={<PricingView />} />
-                            <Route path="/reseñas" element={<ReviewsView />} />
-                            <Route path="/demo" element={<DemoView />} />
-                            {/* (Se eliminaron las rutas legales) */}
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                    </main>
-                    <Footer />
-                </div>
-            ) : (
-                // --- RUTAS PRIVADAS (Si SÍ hay token) ---
-                <div className="app-background flex flex-col h-screen font-sans antialiased">
-                    <Header onLogout={handleLogout} />
-                    <div className="flex-1 overflow-y-auto">
-                        <Routes>
-                            <Route path="/dashboard" element={<DashboardView />} />
-                            <Route 
-                                path="/items" 
-                                element={<ItemsView 
-                                            uploadedItemFiles={uploadedItemFiles} 
-                                            setUploadedItemFiles={setAndStoreItemFiles} 
-                                        />} 
-                            />
-                            <Route path="/bom" element={<BOMView />} />
-                            <Route 
-                                path="/prediction" 
-                                element={<PredictionView 
-                                            results={predictionResults} 
-                                            setResults={setPredictionResults} 
-                                            uploadedSalesFiles={uploadedSalesFiles}
-                                            setUploadedSalesFiles={setAndStoreSalesFiles}
-                                        />} 
-                            />
-                            <Route 
-                                path="/pmp" 
-                                element={<PMPView 
-                                            results={pmpResults} 
-                                            setResults={setPmpResults} 
-                                            skusWithPrediction={predictionResults.map(p => p.selectedSku)} 
-                                        />} 
-                            />
-                            <Route 
-                                path="/mrp"
-                                element={<MRPView 
-                                            pmpResults={pmpResults} 
-                                            mrpResults={mrpResults}
-                                            setMrpResults={setAndStoreMrpResults}
-                                        />} 
-                            />
-                            <Route path="/settings" element={<SettingsView />} />
-                            <Route path="/mrp_products" element={<PlaceholderView title="Plan de Requerimiento de Productos" />} />
-                            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                        </Routes>
+        // 1. ENVUELVE TODO CON LanguageProvider
+        <LanguageProvider>
+            <BrowserRouter>
+                {!token ? (
+                    <div className="public-layout">
+                        <PublicHeader />
+                        <main className="public-content">
+                            <Routes>
+                                <Route path="/" element={<PublicHomeView />} />
+                                <Route path="/login" element={<LoginView onLoginSuccess={handleLoginSuccess} />} />
+                                <Route path="/quienes-somos" element={<AboutUsView />} />
+                                <Route path="/planes" element={<PricingView />} />
+                                <Route path="/reseñas" element={<ReviewsView />} />
+                                <Route path="/demo" element={<DemoView />} />
+                                <Route path="*" element={<Navigate to="/" replace />} />
+                            </Routes>
+                        </main>
+                        <Footer />
                     </div>
-                </div>
-            )}
-        </BrowserRouter>
+                ) : (
+                    <div className="app-background flex flex-col h-screen font-sans antialiased">
+                        <Header onLogout={handleLogout} />
+                        <div className="flex-1 overflow-y-auto">
+                            <Routes>
+                                <Route path="/dashboard" element={<DashboardView />} />
+                                <Route 
+                                    path="/items" 
+                                    element={<ItemsView 
+                                                uploadedItemFiles={uploadedItemFiles} 
+                                                setUploadedItemFiles={setAndStoreItemFiles} 
+                                            />} 
+                                />
+                                <Route path="/bom" element={<BOMView />} />
+                                <Route 
+                                    path="/prediction" 
+                                    element={<PredictionView 
+                                                results={predictionResults} 
+                                                setResults={setPredictionResults} 
+                                                uploadedSalesFiles={uploadedSalesFiles}
+                                                setUploadedSalesFiles={setAndStoreSalesFiles}
+                                            />} 
+                                />
+                                <Route 
+                                    path="/pmp" 
+                                    element={<PMPView 
+                                                results={pmpResults} 
+                                                setResults={setPmpResults} 
+                                                skusWithPrediction={predictionResults.map(p => p.selectedSku)} 
+                                            />} 
+                                />
+                                <Route 
+                                    path="/mrp"
+                                    element={<MRPView 
+                                                pmpResults={pmpResults} 
+                                                mrpResults={mrpResults}
+                                                setMrpResults={setAndStoreMrpResults}
+                                            />} 
+                                />
+                                <Route path="/settings" element={<SettingsView />} />
+                                <Route path="/mrp_products" element={<PlaceholderView title="Plan de Requerimiento de Productos" />} />
+                                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                            </Routes>
+                        </div>
+                    </div>
+                )}
+            </BrowserRouter>
+        </LanguageProvider>
     );
 }
 

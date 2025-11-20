@@ -1,107 +1,142 @@
 /* src/components/views/AboutUsView.css */
 
-.about-us-view {
-    background-color: #ffffff;
-    color: #333;
-    overflow: hidden; /* Previene desbordamiento de animaciones */
+/* --- Animaciones Generales --- */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
 }
 
-/* --- Cabecera de la Página --- */
+.fade-in-up.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* --- Vista Principal --- */
+.about-us-view {
+    width: 100%;
+    overflow-x: hidden;
+    padding-bottom: 80px;
+    background-color: #f9fafb; /* Fondo base suave */
+}
+
+/* --- Sección 1: Cabecera (ESTILO LIMPIO ORIGINAL) --- */
 .about-header {
-    padding: 6rem 2rem 5rem 2rem;
     text-align: center;
-    background-color: #f9fafb; /* Fondo gris claro */
+    padding: 80px 20px 40px 20px;
+    background-color: transparent; 
+    color: #1f2937; 
+    margin-bottom: 40px;
 }
 
 .about-title {
-    font-size: 3.5rem;
+    font-size: 3rem;
     font-weight: 800;
+    color: #111827; 
     margin-bottom: 1rem;
-    /* Efecto de gradiente de color para el título */
-    background: linear-gradient(135deg, #4f46e5, #7e22ce);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    letter-spacing: -0.02em;
 }
 
 .about-subtitle {
     font-size: 1.25rem;
-    color: #4b5563;
     max-width: 700px;
     margin: 0 auto;
+    color: #6b7280;
     line-height: 1.6;
 }
 
-/* --- Contenido (Sobre el proyecto) - NUEVA ESTRUCTURA --- */
+/* --- Sección 2: Contenido Principal (DISEÑO NUEVO: FOTO GRANDE) --- */
 .about-content {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 6rem 2rem;
-    display: grid;
-    /* Dos columnas: texto y visual */
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-    gap: 4rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center; 
+    justify-content: space-between;
+    padding: 0 5%;
+    max-width: 1400px; 
+    margin: 0 auto 100px auto;
+    gap: 80px; 
+}
+
+/* Columna de Texto */
+.about-content-text {
+    flex: 1; 
 }
 
 .about-content-text h2 {
     font-size: 2.5rem;
-    font-weight: 700;
     color: #1f2937;
     margin-bottom: 1.5rem;
+    position: relative;
+    display: inline-block;
+}
+
+.about-content-text h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background-color: #4f46e5; 
+    border-radius: 2px;
 }
 
 .about-content-text p {
-    font-size: 1.1rem;
+    font-size: 1.125rem;
+    color: #4b5563;
     line-height: 1.8;
-    color: #374151;
     margin-bottom: 1.5rem;
 }
 
+/* Columna Visual (Imagen Grande) */
 .about-content-visual {
-    background-color: #f3f4f6; /* Gris muy claro */
-    border-radius: 12px;
-    padding: 3rem;
-    text-align: center;
-    border: 1px solid #e5e7eb;
+    flex: 1; 
+    display: flex;
+    justify-content: center;
+    position: relative;
 }
 
-.about-content-visual svg {
-    /* Icono grande y de color índigo */
-    width: 100px;
-    height: 100px;
-    color: #4f46e5;
-    margin: 0 auto;
-    stroke-width: 1.5;
+.about-image {
+    width: 100%;
+    height: auto;
+    border-radius: 20px; 
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15); /* Sombra moderna */
+    transition: transform 0.3s ease;
+    object-fit: cover;
 }
 
-/* --- Sección del Equipo --- */
+.about-image:hover {
+    transform: translateY(-5px); 
+}
+
+/* --- Sección 3: Equipo (REVERTIDO AL ORIGINAL "LIMPIO") --- */
 .team-section {
-    padding: 6rem 2rem;
-    background-color: #ffffff; /* Fondo blanco */
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    text-align: center;
 }
 
 .team-title {
     font-size: 2.5rem;
-    font-weight: 700;
     color: #1f2937;
-    text-align: center;
-    margin-bottom: 4rem;
+    margin-bottom: 60px;
 }
 
 .team-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr); 
-    gap: 3rem;
-    max-width: 1000px;
-    margin: 0 auto;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
 }
 
 .team-member {
-    text-align: center;
+    /* Sin fondo, sin sombra, sin padding extra */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.3s ease, opacity 0.8s ease-out;
     opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    transform: translateY(20px);
 }
 
 .team-member.is-visible {
@@ -109,19 +144,18 @@
     transform: translateY(0);
 }
 
-.team-photo-frame {
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    margin: 0 auto 1.5rem auto;
-    overflow: hidden;
-    border: 6px solid #ffffff;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease;
+.team-member:hover {
+    transform: translateY(-5px); /* Movimiento sutil */
 }
 
-.team-photo-frame:hover {
-    transform: scale(1.05);
+.team-photo-frame {
+    width: 150px; /* Tamaño original */
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 20px;
+    /* Borde suave opcional, puedes quitarlo si prefieres */
+    border: 4px solid #e0e7ff; 
 }
 
 .team-photo-frame img {
@@ -132,81 +166,59 @@
 
 .team-member h4 {
     font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 0.25rem;
+    color: #111827;
+    margin-bottom: 5px;
+    font-weight: 700;
 }
 
 .team-member p {
-    font-size: 1rem;
-    color: #4f46e5;
+    color: #6b7280;
     font-weight: 500;
+    margin-bottom: 15px;
 }
 
-/* --- NUEVO: Estilo para la Cita --- */
+/* Cita: Estilo texto simple (sin caja gris) */
 .team-member-quote {
-    font-size: 0.95rem;
     font-style: italic;
-    color: #4b5563; /* Gris medio */
-    margin-top: 1rem;
-    border-left: 3px solid #6366f1; /* Borde índigo */
-    padding-left: 1rem;
-    text-align: left;
-    min-height: 80px; /* Alto mínimo para alinear */
+    color: #4b5563;
+    font-size: 1rem;
+    line-height: 1.5;
+    background-color: transparent; /* Quitamos el fondo */
+    padding: 0; /* Quitamos el padding */
+    border-radius: 0;
+    max-width: 280px; /* Limitamos el ancho para que se vea bien el texto */
 }
 
-/* --- Animaciones de Scroll --- */
-.fade-in-up {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
-}
-.fade-in-up.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Retrasos para el equipo */
-.team-member.is-visible:nth-child(1) { transition-delay: 0.1s; }
-.team-member.is-visible:nth-child(2) { transition-delay: 0.2s; }
-.team-member.is-visible:nth-child(3) { transition-delay: 0.3s; }
-
-/* Retrasos para el contenido (NUEVO) */
-.about-content-text.is-visible { transition-delay: 0.1s; }
-.about-content-visual.is-visible { transition-delay: 0.2s; }
-
-
-/* --- Adaptación para móviles --- */
-@media (max-width: 768px) {
-    /* Contenido de dos columnas pasa a una */
+/* --- Responsive --- */
+@media (max-width: 1024px) {
     .about-content {
-        grid-template-columns: 1fr;
-        padding: 4rem 1.5rem;
+        gap: 40px;
+        padding: 0 30px;
     }
+}
 
-    /* Ocultamos el icono grande en móvil */
-    .about-content-visual {
-        display: none;
-    }
-    
-    .team-grid {
-        grid-template-columns: 1fr;
-        gap: 4rem;
-    }
-
+@media (max-width: 768px) {
     .about-header {
-        padding: 4rem 1.5rem;
+        padding: 60px 20px;
     }
 
     .about-title {
-        font-size: 2.5rem;
+        font-size: 2.25rem;
     }
 
-    .team-section {
-        padding: 4rem 1.5rem;
+    .about-content {
+        flex-direction: column;
+        text-align: center;
+        margin-bottom: 60px;
+    }
+    
+    .about-content h2::after {
+        left: 50%;
+        transform: translateX(-50%);
     }
 
-    .team-member-quote {
-        min-height: auto; /* Quitamos el alto mínimo en móvil */
+    .about-content-text,
+    .about-content-visual {
+        width: 100%;
     }
 }

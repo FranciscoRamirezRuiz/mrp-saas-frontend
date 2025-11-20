@@ -39,7 +39,6 @@
     margin-bottom: 0.5rem;
 }
 
-/* Párrafos en la sección de contacto y sociales */
 .footer-section-static:not(:first-child) p {
      color: #cbd5e1;
 }
@@ -61,10 +60,51 @@
     margin: 0;
 }
 
+/* --- NUEVOS ESTILOS PARA EL SELECTOR DE IDIOMA --- */
+.language-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.05); /* Fondo sutil */
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.globe-icon {
+    color: #94a3b8;
+}
+
+.lang-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b; /* Color inactivo */
+    padding: 0;
+    transition: color 0.3s ease;
+}
+
+.lang-btn:hover {
+    color: #cbd5e1;
+}
+
+.lang-btn.active {
+    color: #3b82f6; /* Azul activo (mismo del header) */
+}
+
+.lang-separator {
+    color: #475569;
+    font-size: 0.8rem;
+    margin: 0 2px;
+}
+
 /* Para centrar el footer-bottom en móvil */
 @media (max-width: 768px) {
     .footer-bottom-static {
         flex-direction: column; 
         justify-content: center;
+        gap: 1.5rem;
     }
 }

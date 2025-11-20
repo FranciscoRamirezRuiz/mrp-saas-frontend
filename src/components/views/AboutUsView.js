@@ -1,17 +1,15 @@
 // src/components/views/AboutUsView.js
 import React from 'react';
 import { useInView } from 'react-intersection-observer';
-import { ClipboardList } from 'lucide-react'; // Importamos un icono
-import './AboutUsView.css'; // Importamos los nuevos estilos
+import './AboutUsView.css'; 
 
-// Componente interno para el miembro del equipo (AHORA CON 'quote')
+// Componente interno para el miembro del equipo
 const TeamMember = ({ name, role, imgSrc, quote, delay }) => {
     const { ref, inView } = useInView({
         triggerOnce: true,
         threshold: 0.1,
     });
 
-    // Añadimos la clase 'is-visible' y un retraso basado en el 'delay'
     const animationStyle = inView ? { transitionDelay: `${delay}ms` } : {};
 
     return (
@@ -21,7 +19,6 @@ const TeamMember = ({ name, role, imgSrc, quote, delay }) => {
             </div>
             <h4>{name}</h4>
             <p>{role}</p>
-            {/* Nueva sección para la cita */}
             <p className="team-member-quote">
                 "{quote}"
             </p>
@@ -32,19 +29,14 @@ const TeamMember = ({ name, role, imgSrc, quote, delay }) => {
 // Componente principal de la página
 const AboutUsView = () => {
 
-    // Animación para la cabecera
     const { ref: headerRef, inView: headerInView } = useInView({ triggerOnce: true });
-    
-    // Animación para la sección de texto (Columna 1)
     const { ref: textRef, inView: textInView } = useInView({ triggerOnce: true, delay: 100 });
-    
-    // Animación para el icono (Columna 2)
     const { ref: visualRef, inView: visualInView } = useInView({ triggerOnce: true, delay: 200 });
 
     return (
         <div className="about-us-view">
             
-            {/* --- Sección 1: Cabecera --- */}
+            {/* --- Sección 1: Cabecera (Limpia) --- */}
             <section className="about-header">
                 <div ref={headerRef} className={`fade-in-up ${headerInView ? 'is-visible' : ''}`}>
                     <h1 className="about-title">Sobre Nosotros</h1>
@@ -55,7 +47,7 @@ const AboutUsView = () => {
                 </div>
             </section>
 
-            {/* --- Sección 2: Texto del Proyecto (NUEVO DISEÑO) --- */}
+            {/* --- Sección 2: Nuestro Origen (Imagen Grande y Diseño Moderno) --- */}
             <section className="about-content">
                 {/* Columna 1: Texto */}
                 <div ref={textRef} className={`about-content-text fade-in-up ${textInView ? 'is-visible' : ''}`}>
@@ -71,13 +63,17 @@ const AboutUsView = () => {
                         empresas de manufactura.
                     </p>
                 </div>
-                {/* Columna 2: Visual (con color y animación) */}
+                {/* Columna 2: Imagen Destacada */}
                 <div ref={visualRef} className={`about-content-visual fade-in-up ${visualInView ? 'is-visible' : ''}`}>
-                    <ClipboardList />
+                    <img 
+                        src="/utem.jpg" 
+                        alt="Campus UTEM" 
+                        className="about-image"
+                    />
                 </div>
             </section>
 
-            {/* --- Sección 3: El Equipo (CON CITAS) --- */}
+            {/* --- Sección 3: El Equipo (Diseño Original Limpio) --- */}
             <section className="team-section">
                 <h2 className="team-title">El Equipo</h2>
                 <div className="team-grid">
