@@ -8,14 +8,16 @@ import {
     ClipboardList, 
     Calendar, 
     ShoppingCart, 
-    Settings 
+    Settings,
+    BookOpen, // Nuevo Icono
+    LogOut    // Nuevo Icono
 } from 'lucide-react';
 import './HomeView.css';
 
-const HomeView = () => {
+const HomeView = ({ onLogout }) => {
     const navigate = useNavigate();
 
-    // Definición de los módulos con sus colores y rutas
+    // Definición de los módulos
     const modules = [
         { 
             title: 'Dashboard General', 
@@ -80,7 +82,34 @@ const HomeView = () => {
             bg: 'bg-gray-500/20',
             border: 'border-gray-500/30'
         },
+        // --- NUEVOS MÓDULOS ---
+        { 
+            title: 'Manual de Usuario', 
+            desc: 'Accede a la documentación y guías de uso del sistema.', 
+            icon: BookOpen, 
+            path: '/manual', // Asegúrate de que esta ruta exista o cámbiala según necesites
+            color: 'text-teal-400', 
+            bg: 'bg-teal-500/20',
+            border: 'border-teal-500/30'
+        },
+        { 
+            title: 'Cerrar Sesión', 
+            desc: 'Finalizar la sesión actual de forma segura.', 
+            icon: LogOut, 
+            action: onLogout, // Acción personalizada en lugar de path
+            color: 'text-red-400', 
+            bg: 'bg-red-500/20',
+            border: 'border-red-500/30'
+        },
     ];
+
+    const handleCardClick = (mod) => {
+        if (mod.action) {
+            mod.action(); // Si tiene una acción (como cerrar sesión), la ejecutamos
+        } else if (mod.path) {
+            navigate(mod.path); // Si tiene ruta, navegamos
+        }
+    };
 
     return (
         <div className="home-view-container">
@@ -101,7 +130,7 @@ const HomeView = () => {
                     <div 
                         key={idx} 
                         className={`module-card glass-panel ${mod.border}`}
-                        onClick={() => navigate(mod.path)}
+                        onClick={() => handleCardClick(mod)}
                     >
                         <div className={`icon-wrapper ${mod.bg}`}>
                             <mod.icon size={32} className={mod.color} />

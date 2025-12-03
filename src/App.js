@@ -25,7 +25,7 @@ import PlaceholderView from './components/views/PlaceholderView';
 import PublicHeader from './components/PublicHeader';
 import PublicHomeView from './components/views/PublicHomeView'; 
 import LoginView from './components/views/LoginView';
-import RegisterView from './components/views/RegisterView'; // <--- IMPORTACIÓN AÑADIDA
+import RegisterView from './components/views/RegisterView'; 
 import AboutUsView from './components/views/AboutUsView';
 import PricingView from './components/views/PricingView';
 import ReviewsView from './components/views/ReviewsView';
@@ -89,7 +89,7 @@ function App() {
                             <Routes>
                                 <Route path="/" element={<PublicHomeView />} />
                                 <Route path="/login" element={<LoginView onLoginSuccess={handleLoginSuccess} />} />
-                                <Route path="/registro" element={<RegisterView />} /> {/* <--- RUTA AÑADIDA */}
+                                <Route path="/registro" element={<RegisterView />} />
                                 <Route path="/quienes-somos" element={<AboutUsView />} />
                                 <Route path="/planes" element={<PricingView />} />
                                 <Route path="/reseñas" element={<ReviewsView />} />
@@ -104,8 +104,8 @@ function App() {
                         <Header onLogout={handleLogout} />
                         <div className="flex-1 overflow-y-auto">
                             <Routes>
-                                {/* NUEVA RUTA PRINCIPAL */}
-                                <Route path="/home" element={<HomeView />} />
+                                {/* AQUÍ PASAMOS LA PROP onLogout AL HOMEVIEW */}
+                                <Route path="/home" element={<HomeView onLogout={handleLogout} />} />
                                 
                                 <Route path="/dashboard" element={<DashboardView />} />
                                 <Route 
@@ -144,7 +144,6 @@ function App() {
                                 <Route path="/settings" element={<SettingsView />} />
                                 <Route path="/mrp_products" element={<PlaceholderView title="Plan de Requerimiento de Productos" />} />
                                 
-                                {/* REDIRECCIONAR A HOME POR DEFECTO */}
                                 <Route path="*" element={<Navigate to="/home" replace />} />
                             </Routes>
                         </div>
