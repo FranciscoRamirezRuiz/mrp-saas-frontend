@@ -111,7 +111,7 @@ const LoginView = ({ onLoginSuccess }) => {
 
                     {/* Link de Registro */}
                     <p className="register-link">
-                        ¿No tienes una cuenta? <Link to="/planes">Registrarse</Link>
+                        ¿No tienes una cuenta? <Link to="/registro">Registrarse</Link>
                     </p>
                 </div>
 

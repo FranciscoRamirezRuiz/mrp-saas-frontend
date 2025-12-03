@@ -11,7 +11,7 @@ import './PublicLayout.css';
 
 // --- VISTAS PRIVADAS ---
 import Header from './components/Header';
-import HomeView from './components/views/HomeView'; // <--- IMPORTAR NUEVA VISTA
+import HomeView from './components/views/HomeView';
 import DashboardView from './components/views/DashboardView';
 import ItemsView from './components/views/ItemsView';
 import BOMView from './components/views/BOMView';
@@ -25,6 +25,7 @@ import PlaceholderView from './components/views/PlaceholderView';
 import PublicHeader from './components/PublicHeader';
 import PublicHomeView from './components/views/PublicHomeView'; 
 import LoginView from './components/views/LoginView';
+import RegisterView from './components/views/RegisterView'; // <--- IMPORTACIÓN AÑADIDA
 import AboutUsView from './components/views/AboutUsView';
 import PricingView from './components/views/PricingView';
 import ReviewsView from './components/views/ReviewsView';
@@ -88,6 +89,7 @@ function App() {
                             <Routes>
                                 <Route path="/" element={<PublicHomeView />} />
                                 <Route path="/login" element={<LoginView onLoginSuccess={handleLoginSuccess} />} />
+                                <Route path="/registro" element={<RegisterView />} /> {/* <--- RUTA AÑADIDA */}
                                 <Route path="/quienes-somos" element={<AboutUsView />} />
                                 <Route path="/planes" element={<PricingView />} />
                                 <Route path="/reseñas" element={<ReviewsView />} />
