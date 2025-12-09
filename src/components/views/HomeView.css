@@ -1,130 +1,96 @@
 /* src/components/views/HomeView.css */
 
 .home-view-container {
-    padding: 4rem 2rem;
-    max-width: 1200px;
+    padding: 3rem 2rem;
+    max-width: 1280px;
     margin: 0 auto;
     min-height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
 }
 
 /* --- Cabecera de Bienvenida --- */
 .welcome-header {
     text-align: center;
-    margin-bottom: 4rem;
+    margin-bottom: 3rem;
 }
 
 .welcome-title {
-    font-size: 3.5rem;
+    font-size: 2.25rem;
     font-weight: 800;
-    color: #f8fafc;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
     letter-spacing: -0.02em;
-}
-
-.text-gradient {
-    background: linear-gradient(135deg, #60a5fa, #a78bfa);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    line-height: 1.2;
 }
 
 .welcome-subtitle {
-    font-size: 1.25rem;
-    color: #94a3b8;
-    line-height: 1.6;
-    max-width: 600px;
-    margin: 0 auto;
+    font-size: 1.1rem;
+    font-weight: 500;
 }
 
-/* --- Grilla de Módulos --- */
+/* --- Grilla de Módulos (Configuración 3x3) --- */
 .modules-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
+    /* FORZAMOS 3 COLUMNAS EXACTAS EN ESCRITORIO */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    padding-bottom: 4rem;
 }
 
-/* --- Tarjetas Estilo Glass --- */
-.module-card {
-    background: rgba(30, 41, 59, 0.4); /* Fondo oscuro translúcido */
-    backdrop-filter: blur(12px);
-    border-width: 1px;
-    border-style: solid;
-    /* El color del borde viene de la clase dinámica en JS */
-    border-radius: 24px;
-    padding: 2rem;
+/* --- Tarjetas Estilo SÓLIDO --- */
+.module-card-solid {
+    position: relative;
+    border-radius: 16px;
+    padding: 1.5rem;
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Fondo blanco sólido y bordes visibles */
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    /* El borde izquierdo se define en el JS dinámicamente */
+    
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
+    align-items: flex-start;
+    height: 100%; /* Asegura que todas las tarjetas tengan la misma altura */
+    min-height: 200px; /* Altura mínima para uniformidad */
 }
 
-.module-card:hover {
-    transform: translateY(-8px);
-    background: rgba(30, 41, 59, 0.7);
-    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.5);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Efecto de brillo al hover */
-.module-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 100%;
-    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.module-card:hover::before {
-    opacity: 1;
+/* Hover Effect */
+.module-card-solid:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* --- Iconos --- */
-.icon-wrapper {
-    padding: 1.2rem;
-    border-radius: 20px;
-    margin-bottom: 1.5rem;
+.icon-wrapper-solid {
+    padding: 0.75rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.05);
     transition: transform 0.3s ease;
-    box-shadow: 0 0 20px rgba(0,0,0,0.2);
 }
 
-.module-card:hover .icon-wrapper {
-    transform: scale(1.1) rotate(5deg);
+.module-card-solid:hover .icon-wrapper-solid {
+    transform: scale(1.1);
 }
 
-/* --- Textos de la Tarjeta --- */
-.module-info h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #f1f5f9;
-    margin-bottom: 0.75rem;
-}
-
-.module-info p {
-    font-size: 0.95rem;
-    color: #94a3b8;
-    line-height: 1.5;
-}
-
-/* --- Animaciones de Entrada --- */
+/* --- Animaciones --- */
 .fade-in-up {
-    animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
 }
 
 .delay-100 {
-    animation-delay: 0.15s;
+    animation-delay: 0.1s;
 }
 
 @keyframes fadeInUp {
@@ -134,15 +100,27 @@
     }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* --- Responsive --- */
+
+/* Tablet (Menos de 1024px): Cambiamos a 2 columnas para que no queden muy estrechas */
+@media (max-width: 1024px) {
+    .modules-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Móvil (Menos de 640px): 1 sola columna */
+@media (max-width: 640px) {
     .home-view-container {
-        padding: 2rem 1.5rem;
+        padding: 1.5rem;
     }
     .welcome-title {
-        font-size: 2.5rem;
+        font-size: 1.75rem;
     }
     .modules-grid {
-        grid-template-columns: 1fr; /* Una columna en móvil */
+        grid-template-columns: 1fr;
+    }
+    .module-card-solid {
+        min-height: auto;
     }
 }

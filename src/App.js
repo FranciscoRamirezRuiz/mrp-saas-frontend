@@ -81,9 +81,18 @@ function App() {
 
     return (
         <LanguageProvider>
+            {/* --- FONDO GLOBAL --- */}
+            <div 
+                className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+                style={{ 
+                    backgroundImage: "url('/fondo.png')",
+                    filter: "blur(4px)" // Blur ligero para no distraer
+                }}
+            />
+            
             <BrowserRouter>
                 {!token ? (
-                    <div className="public-layout">
+                    <div className="public-layout relative z-0">
                         <PublicHeader />
                         <main className="public-content">
                             <Routes>
@@ -100,11 +109,10 @@ function App() {
                         <Footer />
                     </div>
                 ) : (
-                    <div className="app-background flex flex-col h-screen font-sans antialiased">
+                    <div className="flex flex-col h-screen font-sans antialiased bg-transparent text-slate-900">
                         <Header onLogout={handleLogout} />
                         <div className="flex-1 overflow-y-auto">
                             <Routes>
-                                {/* AQUÍ PASAMOS LA PROP onLogout AL HOMEVIEW */}
                                 <Route path="/home" element={<HomeView onLogout={handleLogout} />} />
                                 
                                 <Route path="/dashboard" element={<DashboardView />} />

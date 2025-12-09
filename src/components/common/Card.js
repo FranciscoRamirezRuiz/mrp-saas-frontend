@@ -2,9 +2,19 @@
 import React from 'react';
 
 const Card = ({ title, children, className = '' }) => (
-  // Este código asegura que la tarjeta sea blanca, con texto oscuro.
-  <div className={`bg-white p-6 rounded-2xl shadow-xl border border-gray-100 transition-shadow duration-300 ${className}`}>
-    {title && <h3 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">{title}</h3>}
+  <div className={`
+      bg-white 
+      p-6 
+      rounded-xl 
+      shadow-xl 
+      border border-slate-300 
+      ${className}
+  `}>
+    {title && (
+      <h3 className="text-xl font-bold text-slate-900 mb-4 border-b border-slate-200 pb-2">
+        {title}
+      </h3>
+    )}
     {children}
   </div>
 );

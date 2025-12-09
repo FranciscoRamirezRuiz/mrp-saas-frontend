@@ -1,34 +1,38 @@
-/* Estilos base para aplicar el fondo oscuro y la tipografía */
+/* src/App.css */
+
+/* Estilos base */
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #1a2744; /* Color base de fondo (slate-900) */
-    /* Corregido: La ruta ahora apunta a la imagen dentro de la carpeta src */
-    background-image: linear-gradient(rgba(15, 51, 136, 0.97), rgba(15, 51, 136, 0.97)), url('background_network.png');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    color: #cbd5e1; /* Color de texto por defecto (slate-300) */
+    background-color: transparent; 
+    color: #0f172a; /* Texto Slate 950 (Casi negro) para máxima nitidez */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbars personalizadas para una mejor experiencia en tema oscuro */
+/* Forzar que los inputs sean blanco sólido para que no se vean transparentes */
+input, select, textarea {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important; /* Slate 300 */
+    color: #0f172a !important;
+}
+
+/* Scrollbars personalizadas */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 ::-webkit-scrollbar-track {
-    background: #1e293b; /* slate-800 */
+    background: rgba(15, 23, 42, 0.05);
 }
 ::-webkit-scrollbar-thumb {
-    background: #475569; /* slate-600 */
+    background: #64748b; 
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #64748b; /* slate-500 */
+    background: #475569; 
 }
 
-/* Estilos para react-grid-layout en tema oscuro */
+/* Estilos para react-grid-layout */
 .react-grid-layout {
   position: relative;
   transition: height 200ms ease;
