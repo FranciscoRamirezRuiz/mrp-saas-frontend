@@ -502,8 +502,8 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
         const purchases = filteredOrders.filter(o => o.item_type === 'Materia Prima').length;
         const manufacturing = filteredOrders.filter(o => o.item_type !== 'Materia Prima').length;
         return [
-            { name: 'Órdenes de Compra', value: purchases, fill: '#10b981' },
-            { name: 'Órdenes de Fabricación', value: manufacturing, fill: '#3b82f6' }
+            { name: 'Recomendación de materias primas', value: purchases, fill: '#10b981' },
+            { name: 'Recomendación de fabricación', value: manufacturing, fill: '#3b82f6' }
         ];
     }, [filteredOrders]);
 
@@ -512,7 +512,7 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
         <div className="p-8 space-y-6">
             <Card title="Plan de Requerimiento de Materiales (MRP)">
                 <p className="mb-4 text-gray-600">
-                    Selecciona un Plan Maestro de Producción (PMP) para analizar sus requerimientos y generar las órdenes de compra y fabricación necesarias.
+                    Selecciona un Plan Maestro de Producción (PMP) para analizar sus requerimientos y generar las Recomendación de materias primas y fabricación necesarias.
                 </p>
                 {error && <p className="mb-4 text-sm text-red-700 bg-red-50 p-3 rounded-lg"><AlertTriangle size={16} className="inline mr-2"/>{error}</p>}
                 
@@ -665,13 +665,13 @@ const MRPView = ({ pmpResults, mrpResults, setMrpResults }) => { // Recibe props
                                 {/* KPIs (Totales, no filtrados, leen de activeMrpData) */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <StatCard 
-                                        title="Órdenes de Compra (Total)" 
+                                        title="Recomendación de materias primas (Total)" 
                                         value={activeMrpData.planned_purchase_orders.length} 
                                         icon={ShoppingCart} 
                                         colorClass="bg-green-500" 
                                     />
                                     <StatCard 
-                                        title="Órdenes de Fabricación (Total)" 
+                                        title="Recomendación de fabricación (Total)" 
                                         value={activeMrpData.planned_manufacturing_orders.length} 
                                         icon={Package} 
                                         colorClass="bg-blue-500" 

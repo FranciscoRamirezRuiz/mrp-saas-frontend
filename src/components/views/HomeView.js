@@ -39,8 +39,8 @@ const HomeView = ({ onLogout }) => {
             borderClass: 'border-emerald-600'
         },
         { 
-            title: 'Predicción IA', 
-            desc: 'Proyecta la demanda futura utilizando inteligencia artificial.', 
+            title: 'Pronóstico de Ventas', // CAMBIO 1
+            desc: 'Proyecta las ventas futuras utilizando inteligencia artificial.', // CAMBIO 1 (Contexto)
             icon: BrainCircuit, 
             path: '/prediction', 
             colorClass: 'text-purple-600', 
@@ -67,7 +67,7 @@ const HomeView = ({ onLogout }) => {
         },
         { 
             title: 'MRP', 
-            desc: 'Calcula requerimientos netos y genera órdenes de compra.', 
+            desc: 'Calcula requerimientos netos y genera recomendaciones de materias primas.', // CAMBIO 2
             icon: ShoppingCart, 
             path: '/mrp', 
             colorClass: 'text-pink-600', 

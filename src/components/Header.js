@@ -1,158 +1,161 @@
 // src/components/Header.js
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
-    Home, // Icono de casa para "Inicio"
+    Menu, 
+    X, 
     LayoutDashboard, 
     Package, 
-    ClipboardList, 
     BrainCircuit, 
+    ClipboardList, 
     Calendar, 
     ShoppingCart, 
-    Settings, 
-    Menu, 
-    ChevronDown, 
-    LogOut 
+    Settings,
+    LogOut,
+    User
 } from 'lucide-react';
 
 const Header = ({ onLogout }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [openSubMenu, setOpenSubMenu] = useState(null);
-    const menuRef = useRef(null);
-    
     const location = useLocation();
-    const navigate = useNavigate();
-    const activeView = location.pathname;
 
-    const navItems = [
-        { name: 'Inicio', icon: Home, view: '/home' }, // NUEVO ITEM
-        { name: 'Dashboard', icon: LayoutDashboard, view: '/dashboard' }, 
-        { name: 'Gestión de Ítems', icon: Package, view: '/items' }, 
-        { name: 'Predicción de Ventas', icon: BrainCircuit, view: '/prediction' }, 
-        { name: 'Gestión de BOM', icon: ClipboardList, view: '/bom' },
-        { name: 'Plan Maestro', icon: Calendar, view: '/pmp' }, 
-        { 
-            name: 'Plan de Requerimiento de Materiales',
-            icon: ShoppingCart,
-            view: '/mrp'
-        },
-        { name: 'Configuración', icon: Settings, view: '/settings' },
+    // Enlaces de navegación actualizados con la NUEVA TERMINOLOGÍA
+    const navLinks = [
+        { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/items', label: 'Ítems', icon: Package },
+        // CAMBIO: De "Predicción" a "Pronóstico"
+        { path: '/prediction', label: 'Pronóstico', icon: BrainCircuit },
+        { path: '/bom', label: 'BOM', icon: ClipboardList },
+        { path: '/pmp', label: 'PMP', icon: Calendar },
+        // MRP se mantiene corto por espacio, pero sabemos que refiere a "Req. de Materiales"
+        { path: '/mrp', label: 'MRP', icon: ShoppingCart },
     ];
-    
-    const getTitle = (path) => ({
-        '/home': 'Bienvenido',
-        '/dashboard': 'Dashboard General', 
-        '/items': 'Gestión de Ítems e Inventario', 
-        '/bom': 'Gestión de Lista de Materiales (BOM)', 
-        '/prediction': 'Predicción de Ventas', 
-        '/pmp': 'Plan Maestro de Producción', 
-        '/mrp': 'Plan de Requerimiento de Materiales',
-        '/settings': 'Configuración'
-    }[path] || 'PlanFly');
 
-    const handleSubMenuToggle = (itemName) => {
-        setOpenSubMenu(openSubMenu === itemName ? null : itemName);
-    };
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setIsMenuOpen(false);
-                setOpenSubMenu(null);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [menuRef]);
-    
-    const handleLinkClick = () => {
-      setIsMenuOpen(false);
-      setOpenSubMenu(null);
-    };
-    
-    // Logo lleva a HOME ahora
-    const handleLogoClick = () => {
-        navigate('/home');
-    };
+    const isActive = (path) => location.pathname === path;
 
     return (
-        <header className="relative flex items-center justify-between h-20 bg-slate-900/80 backdrop-blur-sm shadow-lg z-20 sticky top-0 px-4 md:px-8 border-b border-slate-700">
-            <div 
-                className="flex items-center space-x-2 cursor-pointer"
-                onClick={handleLogoClick}
-            >
-                <img 
-                    src="Icono_PlanFly2.png" 
-                    alt="Logo PlanFly" 
-                    className="h-40 w-auto object-contain" 
-                />
-            </div>
-            
-            <h2 className="text-2xl font-bold text-white hidden md:block tracking-wider">{getTitle(activeView)}</h2>
-            
-            <div className="flex items-center space-x-2">
-                <div className="relative" ref={menuRef}>
-                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition-colors duration-200 flex items-center">
-                        <Menu className="w-6 h-6 mr-2" />
-                        <span className="hidden sm:block text-sm font-semibold">Menú</span>
-                    </button>
-                    {isMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-2xl py-2 z-30">
-                            {navItems.map((item) => (
-                                !item.subItems ? (
-                                    <Link
-                                        key={item.name} 
-                                        to={item.view}
-                                        onClick={handleLinkClick}
-                                        className={`w-full text-left flex items-center px-4 py-3 text-sm transition-colors duration-200 ${ 
-                                            activeView === item.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' 
-                                        }`}
-                                    >
-                                        <item.icon className="h-4 w-4 mr-3" /> {item.name}
-                                    </Link>
-                                ) : (
-                                    <div key={item.name} className="border-t">
-                                        <button
-                                            onClick={() => handleSubMenuToggle(item.name)}
-                                            className="w-full text-left flex items-center justify-between px-4 py-3 text-sm text-gray-700 font-semibold hover:bg-gray-100"
-                                        >
-                                            <div className="flex items-center">
-                                                <item.icon className="h-4 w-4 mr-3" /> {item.name}
-                                            </div>
-                                            <ChevronDown size={16} className={`transition-transform ${openSubMenu === item.name ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        {openSubMenu === item.name && (
-                                            <div>
-                                                {item.subItems.map(subItem => (
-                                                    <Link
-                                                        key={subItem.view} 
-                                                        to={subItem.view}
-                                                        onClick={handleLinkClick}
-                                                        className={`w-full text-left flex items-center pl-11 pr-4 py-3 text-sm transition-colors duration-200 ${ 
-                                                            activeView === subItem.view ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-700 hover:bg-gray-100' 
-                                                        }`}
-                                                    >
-                                                        <subItem.icon className="h-4 w-4 mr-3" /> {subItem.name}
-                                                    </Link>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            ))}
-                            
-                            <div className="border-t border-gray-200 mt-2 pt-2">
-                                <button
-                                    onClick={onLogout}
-                                    className="w-full text-left flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50"
-                                >
-                                    <LogOut className="h-4 w-4 mr-3" /> Cerrar Sesión
-                                </button>
+        // CAMBIO: Header Sólido (bg-white), borde gris, sombras sutiles. Sin transparencias.
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-50 h-16 shadow-sm font-sans">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
+                <div className="flex justify-between items-center h-full">
+                    
+                    {/* --- LOGO --- */}
+                    <div className="flex items-center gap-3">
+                        <Link to="/home" className="flex items-center gap-2 group decoration-transparent">
+                            {/* Icono del Logo */}
+                            <div className="bg-indigo-600 p-1.5 rounded-lg group-hover:bg-indigo-700 transition-colors">
+                                <span className="text-white font-bold text-lg leading-none">P</span>
                             </div>
+                            {/* Texto del Logo */}
+                            <span className="font-extrabold text-xl text-slate-900 tracking-tight no-underline">
+                                Plan<span className="text-indigo-600">Fly</span>
+                            </span>
+                        </Link>
+                    </div>
+
+                    {/* --- NAVEGACIÓN ESCRITORIO --- */}
+                    <nav className="hidden md:flex items-center gap-1">
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.path}
+                                to={link.path}
+                                className={`
+                                    px-3 py-2 rounded-lg text-sm font-bold transition-all duration-200 flex items-center gap-2 no-underline
+                                    ${isActive(link.path) 
+                                        ? 'bg-indigo-50 text-indigo-700' 
+                                        : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+                                    }
+                                `}
+                            >
+                                <link.icon size={18} strokeWidth={2.5} />
+                                {link.label}
+                            </Link>
+                        ))}
+                    </nav>
+
+                    {/* --- PERFIL / LOGOUT --- */}
+                    <div className="hidden md:flex items-center gap-3 pl-4 border-l border-slate-200 ml-2">
+                        <Link 
+                            to="/settings" 
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-full transition-colors"
+                            title="Configuración"
+                        >
+                            <Settings size={20} />
+                        </Link>
+                        
+                        <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center border border-slate-200 text-indigo-600">
+                            <User size={18} strokeWidth={2.5} />
                         </div>
-                    )}
+
+                        <button 
+                            onClick={onLogout}
+                            className="ml-2 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-red-600 transition-colors"
+                            title="Cerrar Sesión"
+                        >
+                            <LogOut size={18} />
+                        </button>
+                    </div>
+
+                    {/* --- BOTÓN MENÚ MÓVIL --- */}
+                    <div className="md:hidden flex items-center">
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="text-slate-600 hover:text-indigo-600 p-2 rounded-md"
+                        >
+                            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            {/* --- MENÚ MÓVIL (Dropdown) --- */}
+            {isMenuOpen && (
+                <div className="md:hidden bg-white border-t border-slate-200 absolute w-full left-0 shadow-lg">
+                    <div className="px-4 pt-2 pb-4 space-y-1">
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.path}
+                                to={link.path}
+                                onClick={() => setIsMenuOpen(false)}
+                                className={`
+                                    block px-3 py-3 rounded-md text-base font-bold no-underline
+                                    ${isActive(link.path)
+                                        ? 'bg-indigo-50 text-indigo-700'
+                                        : 'text-slate-600 hover:bg-slate-50 hover:text-indigo-600'
+                                    }
+                                `}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <link.icon size={20} />
+                                    {link.label}
+                                </div>
+                            </Link>
+                        ))}
+                        <div className="border-t border-slate-100 my-2 pt-2">
+                             <Link
+                                to="/settings"
+                                onClick={() => setIsMenuOpen(false)}
+                                className="block px-3 py-3 text-slate-600 font-bold hover:text-indigo-600 no-underline"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Settings size={20} />
+                                    Configuración
+                                </div>
+                            </Link>
+                            <button
+                                onClick={() => {
+                                    onLogout();
+                                    setIsMenuOpen(false);
+                                }}
+                                className="w-full text-left px-3 py-3 text-red-600 font-bold hover:bg-red-50 rounded-md flex items-center gap-3"
+                            >
+                                <LogOut size={20} />
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };
